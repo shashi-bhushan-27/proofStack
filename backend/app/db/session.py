@@ -19,10 +19,18 @@ try:
     _url_obj = make_url(settings.DATABASE_URL)
     if _url_obj.drivername in ("postgres", "postgresql"):
         _url_obj = _url_obj.set(drivername="postgresql+asyncpg")
+    
+    # Enforce SSL for remote databases (like Supabase, Render, RDS)
+    if _url_obj.host and _url_obj.host not in ("localhost", "127.0.0.1", "db", "postgres"):
+        # If ssl is not explicitly passed, add it
+        if "ssl" not in _url_obj.query:
+            _url_obj = _url_obj.update_query_dict({"ssl": "require"})
+            
     db_url = _url_obj.render_as_string(hide_password=False)
 except Exception:
     db_url = settings.DATABASE_URL
     if db_url.startswith("postgres://"):
+
         db_url = db_url.replace("postgres://", "postgresql+asyncpg://", 1)
     elif db_url.startswith("postgresql://") and "+asyncpg" not in db_url:
         db_url = db_url.replace("postgresql://", "postgresql+asyncpg://", 1)
