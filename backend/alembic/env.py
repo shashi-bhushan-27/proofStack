@@ -15,14 +15,22 @@ from app.models import *  # noqa: F401, F403
 # access to the values within the .ini file in use.
 config = context.config
 
-# Overwrite sqlalchemy.url with our dynamic settings value if available
+from sqlalchemy.engine.url import make_url
+
 if settings.DATABASE_URL:
-    db_url = settings.DATABASE_URL
-    if db_url.startswith("postgres://"):
-        db_url = db_url.replace("postgres://", "postgresql+asyncpg://", 1)
-    elif db_url.startswith("postgresql://") and "+asyncpg" not in db_url:
-        db_url = db_url.replace("postgresql://", "postgresql+asyncpg://", 1)
+    try:
+        _url_obj = make_url(settings.DATABASE_URL)
+        if _url_obj.drivername in ("postgres", "postgresql"):
+            _url_obj = _url_obj.set(drivername="postgresql+asyncpg")
+        db_url = _url_obj.render_as_string(hide_password=False)
+    except Exception:
+        db_url = settings.DATABASE_URL
+        if db_url.startswith("postgres://"):
+            db_url = db_url.replace("postgres://", "postgresql+asyncpg://", 1)
+        elif db_url.startswith("postgresql://") and "+asyncpg" not in db_url:
+            db_url = db_url.replace("postgresql://", "postgresql+asyncpg://", 1)
     config.set_main_option("sqlalchemy.url", db_url)
+
 
 
 # Interpret the config file for Python logging.
