@@ -1,0 +1,47 @@
+services:
+  # PostgreSQL Database
+  db:
+    image: postgres:16-alpine
+    container_name: proofstack-db
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-proofstack}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-proofstack}
+      POSTGRES_DB: ${POSTGRES_DB:-proofstack}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-proofstack}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  # FastAPI Backend
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: proofstack-backend
+    env_file:
+      - .env
+    environment:
+      # Override DATABASE_URL to use Docker service name instead of localhost
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-proofstack}:${POSTGRES_PASSWORD:-proofstack}@db:5432/${POSTGRES_DB:-proofstack}
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./backend:/app
+      - backend_uploads:/app/uploads
+      - ./proofstack-b606d-firebase-adminsdk-fbsvc-229165d20f.json:/app/firebase-credentials.json:ro
+
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: unless-stopped
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+
+volumes:
+  postgres_data:
+  backend_uploads:

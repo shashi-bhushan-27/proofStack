@@ -1,0 +1,161 @@
+"""FastAPI dependencies for authentication and authorization.
+
+Provides reusable Depends() callables for route handlers.
+"""
+
+import uuid
+
+import jwt
+from fastapi import Depends, HTTPException, status
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.core.config import settings
+from app.core.security import decode_access_token, verify_firebase_token
+from app.db.session import get_db
+from app.models.user import User
+
+_bearer_scheme = HTTPBearer(auto_error=True)
+_bearer_scheme_optional = HTTPBearer(auto_error=False)
+
+
+async def _get_or_sync_user(claims: dict, db: AsyncSession) -> User | None:
+    """Find or create a PostgreSQL User based on token claims (`uid`, `email`)."""
+    if claims.get("type") == "guest":
+        return None
+
+    uid = claims.get("uid")
+    email = claims.get("email")
+
+    # 1. If uid is a valid UUID, first try looking up directly by User.id (for legacy/test JWTs)
+    if uid:
+        try:
+            user_uuid = uuid.UUID(str(uid))
+            result = await db.execute(select(User).where(User.id == user_uuid))
+            if user := result.scalar_one_or_none():
+                return user if user.is_active else None
+        except ValueError:
+            pass
+
+        # 2. Look up by firebase_uid
+        result = await db.execute(select(User).where(User.firebase_uid == str(uid)))
+        if user := result.scalar_one_or_none():
+            return user if user.is_active else None
+
+    # 3. Look up by email (to link existing legacy user account or find email-matched user)
+    if email:
+        result = await db.execute(select(User).where(User.email == email))
+        if user := result.scalar_one_or_none():
+            if not user.is_active:
+                return None
+            if uid and not user.firebase_uid:
+                user.firebase_uid = str(uid)
+                await db.flush()
+            return user
+
+        # 4. If neither found and we have both uid/email from Firebase, auto-create PostgreSQL User
+        if uid and email:
+            new_user = User(
+                id=uuid.uuid4(),
+                firebase_uid=str(uid),
+                email=email,
+                full_name=claims.get("name") or email.split("@")[0],
+                is_active=True,
+                auth_provider=claims.get("type", "firebase"),
+            )
+            db.add(new_user)
+            await db.flush()
+            await db.refresh(new_user)
+            return new_user
+
+    return None
+
+
+async def get_current_user(
+    credentials: HTTPAuthorizationCredentials = Depends(_bearer_scheme),
+    db: AsyncSession = Depends(get_db),
+) -> User:
+    """Extract and validate the token (Firebase or local JWT), then return the authenticated user.
+
+    Raises 401 if the token is invalid/expired or the user doesn't exist.
+    """
+    try:
+        claims = verify_firebase_token(credentials.credentials)
+        if claims.get("type") == "guest":
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Invalid token type (guest token)",
+            )
+    except jwt.ExpiredSignatureError:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Token has expired",
+        )
+    except (jwt.InvalidTokenError, ValueError) as exc:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail=f"Invalid token: {exc}",
+        )
+
+    user = await _get_or_sync_user(claims, db)
+    if user is None:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="User not found or inactive",
+        )
+    return user
+
+
+async def get_current_user_optional(
+    credentials: HTTPAuthorizationCredentials | None = Depends(_bearer_scheme_optional),
+    db: AsyncSession = Depends(get_db),
+) -> User | None:
+    """Return the authenticated user if a valid token is provided, else None.
+
+    Used for two-tier access endpoints that work for both guests and authed users.
+    """
+    if credentials is None:
+        return None
+    try:
+        claims = verify_firebase_token(credentials.credentials)
+        if claims.get("type") == "guest":
+            return None
+    except (jwt.ExpiredSignatureError, jwt.InvalidTokenError, ValueError):
+        return None
+
+    return await _get_or_sync_user(claims, db)
+
+
+
+def verify_ownership(
+    resource_user_id: uuid.UUID | None,
+    current_user: User,
+    resource_name: str = "resource",
+) -> None:
+    """Verify that the current user owns the given resource.
+
+    Raises 403 if the resource belongs to a different user.
+    """
+    if resource_user_id is None:
+        # Guest resource — no ownership to verify
+        return
+    if resource_user_id != current_user.id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=f"You do not have permission to access this {resource_name}",
+        )
+
+
+def verify_guest_token(token: str, expected_analysis_id: uuid.UUID) -> bool:
+    """Validate a guest token is scoped to the given analysis.
+
+    Returns True if valid, False otherwise.
+    """
+    try:
+        payload = decode_access_token(token)
+        if payload.get("type") != "guest":
+            return False
+        return payload.get("sub") == str(expected_analysis_id)
+    except (jwt.ExpiredSignatureError, jwt.InvalidTokenError):
+        return False
