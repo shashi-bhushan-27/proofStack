@@ -23,10 +23,14 @@ if settings.DATABASE_URL:
         if _url_obj.drivername in ("postgres", "postgresql"):
             _url_obj = _url_obj.set(drivername="postgresql+asyncpg")
         
-        # Enforce SSL for remote databases
+        # Enforce SSL and correct IPv4 port for remote databases
         if _url_obj.host and _url_obj.host not in ("localhost", "127.0.0.1", "db", "postgres"):
             if "ssl" not in _url_obj.query:
                 _url_obj = _url_obj.update_query_dict({"ssl": "require"})
+            
+            # Supabase pooler requires port 6543 for IPv4
+            if "pooler.supabase.com" in _url_obj.host and _url_obj.port == 5432:
+                _url_obj = _url_obj.set(port=6543)
                 
         db_url = _url_obj.render_as_string(hide_password=False)
 
