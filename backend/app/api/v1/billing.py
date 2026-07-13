@@ -82,12 +82,13 @@ async def check_order_status(
 async def handle_cashfree_webhook(
     request: Request,
     x_webhook_signature: str = Header("", alias="x-webhook-signature"),
+    x_webhook_timestamp: str = Header("", alias="x-webhook-timestamp"),
     db: AsyncSession = Depends(get_db),
 ) -> dict[str, Any]:
     """Handle incoming Cashfree subscription/order webhook events."""
     raw_body = await request.body()
     return await billing_service.handle_webhook(
-        raw_body=raw_body, signature=x_webhook_signature, db=db
+        raw_body=raw_body, signature=x_webhook_signature, timestamp=x_webhook_timestamp, db=db
     )
 
 

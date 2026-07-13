@@ -137,13 +137,15 @@ class CashfreeBillingService:
         return {"status": "active", "tier": "pro", "order_id": order_id}
 
     async def handle_webhook(
-        self, raw_body: bytes, signature: str, db: AsyncSession
+        self, raw_body: bytes, signature: str, timestamp: str, db: AsyncSession
     ) -> dict[str, Any]:
         """Verify HMAC signature and process webhook state."""
         if self.webhook_secret and self.webhook_secret != "TEST_WEBHOOK_SECRET":
+            # Cashfree expects the timestamp concatenated with the raw payload
+            signed_payload = timestamp.encode("utf-8") + raw_body
             computed_hmac = hmac.new(
                 self.webhook_secret.encode("utf-8"),
-                raw_body,
+                signed_payload,
                 hashlib.sha256,
             )
             computed_sig = base64.b64encode(computed_hmac.digest()).decode("utf-8")
