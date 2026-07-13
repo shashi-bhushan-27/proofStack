@@ -42,6 +42,16 @@ services:
     restart: unless-stopped
     command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
 
+  # Cloudflare Tunnel for Free Instant Public HTTPS URL (No Credit Card Required)
+  tunnel:
+    image: cloudflare/cloudflared:latest
+    container_name: proofstack-tunnel
+    command: tunnel --url http://backend:8000
+    depends_on:
+      - backend
+    restart: unless-stopped
+
 volumes:
   postgres_data:
   backend_uploads:
+

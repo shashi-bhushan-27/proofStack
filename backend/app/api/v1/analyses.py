@@ -1,7 +1,9 @@
 """Analysis routes — create, list, detail, skills, recommendations."""
 
 import uuid
+from datetime import datetime, timezone
 from typing import Any
+
 
 from fastapi import APIRouter, BackgroundTasks, Depends, Header, HTTPException, status
 from sqlalchemy import func, select
@@ -88,10 +90,26 @@ async def create_analysis(
     The analysis pipeline runs as a background task.
     """
     # Validate resume exists
+
     result = await db.execute(select(Resume).where(Resume.id == payload.resume_id))
     resume = result.scalar_one_or_none()
     if resume is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Resume not found")
+
+    # Enforce Subscription & Product Functionality Gating (Free vs Pro)
+    if current_user and current_user.subscription_tier == "free":
+        now_utc = datetime.now(timezone.utc)
+        today = now_utc.date()
+        if not current_user.last_analysis_date or current_user.last_analysis_date.date() < today:
+            current_user.daily_analyses_count = 0
+            current_user.last_analysis_date = now_utc
+        if current_user.daily_analyses_count >= 3:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Daily analysis limit (3/day) reached on Free tier. Upgrade to Pro for unlimited AI evaluations."
+            )
+        current_user.daily_analyses_count += 1
+
 
     # Create job description record
     jd = JobDescription(

@@ -14,13 +14,20 @@ from sqlalchemy.ext.asyncio import (
 
 from app.core.config import settings
 
+db_url = settings.DATABASE_URL
+if db_url.startswith("postgres://"):
+    db_url = db_url.replace("postgres://", "postgresql+asyncpg://", 1)
+elif db_url.startswith("postgresql://") and "+asyncpg" not in db_url:
+    db_url = db_url.replace("postgresql://", "postgresql+asyncpg://", 1)
+
 engine = create_async_engine(
-    settings.DATABASE_URL,
+    db_url,
     echo=settings.DEBUG,
     pool_pre_ping=True,
     pool_size=5,
     max_overflow=10,
 )
+
 
 async_session_factory = async_sessionmaker(
     engine,

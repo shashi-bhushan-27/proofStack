@@ -2,7 +2,7 @@
 
 from fastapi import APIRouter
 
-from app.api.v1 import auth, resumes, job_descriptions, analyses, interrogation
+from app.api.v1 import auth, resumes, job_descriptions, analyses, interrogation, billing
 
 router = APIRouter()
 
@@ -11,3 +11,5 @@ router.include_router(resumes.router, prefix="/resumes", tags=["Resumes"])
 router.include_router(job_descriptions.router, prefix="/job-descriptions", tags=["Job Descriptions"])
 router.include_router(analyses.router, prefix="/analyses", tags=["Analyses"])
 router.include_router(interrogation.router, tags=["Interrogation"])
+router.include_router(billing.router, tags=["Billing"])
+

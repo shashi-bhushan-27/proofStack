@@ -36,6 +36,13 @@ class Settings(BaseSettings):
     FIREBASE_PROJECT_ID: str | None = "proofstack-b606d"
     FIREBASE_CREDENTIALS_PATH: str | None = "/app/firebase-credentials.json"
 
+    # ── Cashfree Billing & Subscriptions ─────────────────────────────────
+    CASHFREE_APP_ID: str = "TEST1083047903210"
+    CASHFREE_SECRET_KEY: str = "TEST_SECRET_KEY"
+    CASHFREE_ENVIRONMENT: str = "Sandbox"  # "Sandbox" or "Production"
+    CASHFREE_WEBHOOK_SECRET: str = "TEST_WEBHOOK_SECRET"
+
+
 
 
 

@@ -28,12 +28,19 @@ class User(Base):
         String(50), default="firebase", server_default="firebase"
     )
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, server_default="true")
+    subscription_tier: Mapped[str] = mapped_column(String(50), default="free", server_default="free")
+    subscription_status: Mapped[str] = mapped_column(String(50), default="active", server_default="active")
+    cashfree_subscription_id: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    cashfree_customer_id: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    daily_analyses_count: Mapped[int] = mapped_column(default=0, server_default="0")
+    last_analysis_date: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False
     )
+
 
     # ── Relationships ────────────────────────────────────────────────────
     resumes: Mapped[list["Resume"]] = relationship(  # noqa: F821

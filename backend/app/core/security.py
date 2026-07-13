@@ -55,11 +55,12 @@ if firebase_admin and not firebase_admin._apps:
         elif settings.FIREBASE_PROJECT_ID:
             firebase_admin.initialize_app(options={"projectId": settings.FIREBASE_PROJECT_ID})
         else:
+            try:
+                firebase_admin.initialize_app()
+            except ValueError:
+                pass
 
-        try:
-            firebase_admin.initialize_app()
-        except ValueError:
-            pass
+
 
 
 
