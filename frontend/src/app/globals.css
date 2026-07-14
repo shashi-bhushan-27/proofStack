@@ -1,0 +1,268 @@
+@import "tailwindcss";
+
+/* ==========================================
+   proofStack Design System — Custom Properties
+   ========================================== */
+:root {
+  /* Brand Colors */
+  --color-primary: 99 102 241;       /* Indigo-500 */
+  --color-primary-light: 129 140 248; /* Indigo-400 */
+  --color-primary-dark: 79 70 229;   /* Indigo-600 */
+  
+  /* Evidence Level Colors */
+  --color-evidence-strong: 16 185 129;    /* Emerald-500 */
+  --color-evidence-moderate: 59 130 246;  /* Blue-500 */
+  --color-evidence-weak: 245 158 11;      /* Amber-500 */
+  --color-evidence-mentioned: 148 163 184; /* Slate-400 */
+  --color-evidence-missing: 244 63 94;    /* Rose-500 */
+
+  /* Dark Theme (default) */
+  --background: 2 6 23;
+  --background-secondary: 15 23 42;
+  --background-tertiary: 30 41 59;
+  --foreground: 248 250 252;
+  --foreground-muted: 148 163 184;
+  --border: 51 65 85;
+  --border-light: 30 41 59;
+  
+  /* Surfaces */
+  --card: 15 23 42;
+  --card-hover: 30 41 59;
+  --input: 30 41 59;
+  --ring: 99 102 241;
+  
+  /* Radius */
+  --radius: 0.625rem;
+
+  /* Shadows */
+  --shadow-glow: 0 0 20px rgba(99, 102, 241, 0.15);
+  --shadow-glow-strong: 0 0 40px rgba(99, 102, 241, 0.25);
+}
+
+/* ==========================================
+   Global Styles — NO universal reset that
+   could override Tailwind utilities
+   ========================================== */
+*, *::before, *::after {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  font-family: var(--font-inter), -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  background-color: rgb(var(--background));
+  color: rgb(var(--foreground));
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  min-height: 100vh;
+}
+
+/* ==========================================
+   Scrollbar Styling
+   ========================================== */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: rgb(var(--background-secondary));
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgb(var(--border));
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgb(var(--foreground-muted));
+}
+
+/* ==========================================
+   Selection
+   ========================================== */
+::selection {
+  background-color: rgba(99, 102, 241, 0.3);
+  color: rgb(var(--foreground));
+}
+
+/* ==========================================
+   Focus Styles
+   ========================================== */
+*:focus-visible {
+  outline: 2px solid rgb(var(--ring));
+  outline-offset: 2px;
+  border-radius: var(--radius);
+}
+
+/* ==========================================
+   Custom Animations
+   ========================================== */
+@keyframes fade-in {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes fade-in-up {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes slide-in-right {
+  from { opacity: 0; transform: translateX(20px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes pulse-glow {
+  0%, 100% { box-shadow: 0 0 5px rgba(99, 102, 241, 0.2); }
+  50% { box-shadow: 0 0 20px rgba(99, 102, 241, 0.4); }
+}
+
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+@keyframes spin-slow {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+@keyframes progress-pulse {
+  0%, 100% { opacity: 0.6; }
+  50% { opacity: 1; }
+}
+
+.animate-fade-in {
+  animation: fade-in 0.5s ease-out forwards;
+}
+
+.animate-fade-in-up {
+  animation: fade-in-up 0.6s ease-out forwards;
+}
+
+.animate-slide-in-right {
+  animation: slide-in-right 0.5s ease-out forwards;
+}
+
+.animate-pulse-glow {
+  animation: pulse-glow 2s ease-in-out infinite;
+}
+
+.animate-shimmer {
+  background: linear-gradient(
+    90deg,
+    rgb(var(--background-tertiary)) 0%,
+    rgb(var(--border)) 50%,
+    rgb(var(--background-tertiary)) 100%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.5s ease-in-out infinite;
+}
+
+.animate-spin-slow {
+  animation: spin-slow 3s linear infinite;
+}
+
+.animate-progress-pulse {
+  animation: progress-pulse 1.5s ease-in-out infinite;
+}
+
+/* ==========================================
+   Glass Effect
+   ========================================== */
+.glass {
+  background: rgba(15, 23, 42, 0.7);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(51, 65, 85, 0.5);
+}
+
+.glass-strong {
+  background: rgba(15, 23, 42, 0.85);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(51, 65, 85, 0.7);
+}
+
+/* ==========================================
+   Gradient Text
+   ========================================== */
+.gradient-text {
+  background: linear-gradient(135deg, rgb(var(--color-primary-light)), rgb(var(--color-primary)), #a855f7);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.gradient-text-evidence {
+  background: linear-gradient(135deg, #10b981, #3b82f6);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* ==========================================
+   Card Hover Effects
+   ========================================== */
+.card-hover {
+  transition: all 0.3s ease;
+  border: 1px solid rgb(var(--border));
+}
+
+.card-hover:hover {
+  border-color: rgba(99, 102, 241, 0.4);
+  box-shadow: var(--shadow-glow);
+  transform: translateY(-2px);
+}
+
+/* ==========================================
+   Score Ring
+   ========================================== */
+.score-ring {
+  transform: rotate(-90deg);
+}
+
+.score-ring circle {
+  transition: stroke-dashoffset 1s ease-in-out;
+}
+
+/* ==========================================
+   Evidence Bar
+   ========================================== */
+.evidence-bar {
+  height: 4px;
+  border-radius: 2px;
+  background: rgb(var(--background-tertiary));
+  overflow: hidden;
+}
+
+.evidence-bar-fill {
+  height: 100%;
+  border-radius: 2px;
+  transition: width 0.8s ease-in-out;
+}
+
+/* ==========================================
+   Dot Grid Background Pattern
+   ========================================== */
+.bg-dot-pattern {
+  background-image: radial-gradient(
+    rgba(99, 102, 241, 0.08) 1px,
+    transparent 1px
+  );
+  background-size: 24px 24px;
+}
+
+/* ==========================================
+   Staggered Animation Delays
+   ========================================== */
+.stagger-1 { animation-delay: 0.1s; }
+.stagger-2 { animation-delay: 0.2s; }
+.stagger-3 { animation-delay: 0.3s; }
+.stagger-4 { animation-delay: 0.4s; }
+.stagger-5 { animation-delay: 0.5s; }
+.stagger-6 { animation-delay: 0.6s; }
