@@ -78,14 +78,19 @@ export default function BillingPage() {
         return_url: returnUrl,
       });
 
-      const { payment_session_id, order_id, simulation } = response.data;
+      const { payment_session_id, order_id } = response.data;
 
-      if (simulation || !payment_session_id || !window.Cashfree) {
-        // Direct sandbox status fallback verification if SDK session simulation
-        router.push(`/billing/status?order_id=${order_id}&status=PAID`);
+      if (!payment_session_id) {
+        setError("Could not create payment session. Please try again.");
         return;
       }
 
+      if (!window.Cashfree) {
+        setError("Cashfree SDK is still loading. Please wait a moment and try again.");
+        return;
+      }
+
+      // Initialize Cashfree Checkout
       const cashfreeMode = (process.env.NEXT_PUBLIC_CASHFREE_MODE || "sandbox") as "sandbox" | "production";
       const cashfree = window.Cashfree({
         mode: cashfreeMode,

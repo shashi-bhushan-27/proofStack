@@ -4,6 +4,7 @@ import base64
 import hashlib
 import hmac
 import json
+import logging
 import uuid
 from typing import Any
 
@@ -14,6 +15,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
 from app.models.user import User
+
+logger = logging.getLogger(__name__)
 
 
 class CashfreeBillingService:
@@ -61,47 +64,45 @@ class CashfreeBillingService:
         }
 
         async with httpx.AsyncClient(timeout=30.0) as client:
-            try:
-                resp = await client.post(
-                    f"{self.base_url}/orders",
-                    json=payload,
-                    headers=self._get_headers(),
-                )
-                if resp.status_code not in (200, 201):
-                    # Fallback simulation if Cashfree Sandbox credentials are not yet configured or invalid
-                    payment_session_id = f"session_{uuid.uuid4().hex}"
-                    user.cashfree_subscription_id = order_id
-                    await db.commit()
-                    return {
-                        "order_id": order_id,
-                        "payment_session_id": payment_session_id,
-                        "plan_id": plan_id,
-                        "amount": amount,
-                        "simulation": True,
-                    }
+            resp = await client.post(
+                f"{self.base_url}/orders",
+                json=payload,
+                headers=self._get_headers(),
+            )
 
-                data = resp.json()
-                user.cashfree_subscription_id = order_id
-                await db.commit()
-                return {
-                    "order_id": data.get("order_id", order_id),
-                    "payment_session_id": data.get("payment_session_id"),
-                    "plan_id": plan_id,
-                    "amount": amount,
-                    "simulation": False,
-                }
-            except Exception as e:
-                # Fallback session for smooth local & sandbox testing
-                payment_session_id = f"session_{uuid.uuid4().hex}"
-                user.cashfree_subscription_id = order_id
-                await db.commit()
-                return {
-                    "order_id": order_id,
-                    "payment_session_id": payment_session_id,
-                    "plan_id": plan_id,
-                    "amount": amount,
-                    "simulation": True,
-                }
+            if resp.status_code not in (200, 201):
+                error_detail = resp.text
+                logger.error(
+                    "Cashfree Create Order failed: status=%s body=%s",
+                    resp.status_code,
+                    error_detail,
+                )
+                raise HTTPException(
+                    status_code=502,
+                    detail=f"Cashfree order creation failed: {error_detail}",
+                )
+
+            data = resp.json()
+            payment_session_id = data.get("payment_session_id")
+
+            if not payment_session_id:
+                logger.error("Cashfree response missing payment_session_id: %s", data)
+                raise HTTPException(
+                    status_code=502,
+                    detail="Cashfree did not return a payment session.",
+                )
+
+            # Save the order association to the user
+            user.cashfree_subscription_id = order_id
+            await db.commit()
+
+            return {
+                "order_id": data.get("order_id", order_id),
+                "payment_session_id": payment_session_id,
+                "plan_id": plan_id,
+                "amount": amount,
+                "simulation": False,
+            }
 
     async def verify_subscription_status(
         self, order_id: str, db: AsyncSession
@@ -113,6 +114,10 @@ class CashfreeBillingService:
         if not user:
             raise HTTPException(status_code=404, detail="Order/User not found")
 
+        # If already upgraded (e.g. via webhook), return current state
+        if user.subscription_tier == "pro" and user.subscription_status == "active":
+            return {"status": "active", "tier": "pro", "order_id": order_id}
+
         async with httpx.AsyncClient(timeout=15.0) as client:
             try:
                 resp = await client.get(
@@ -121,20 +126,26 @@ class CashfreeBillingService:
                 )
                 if resp.status_code == 200:
                     data = resp.json()
-                    status = data.get("order_status", "PAID")
-                    if status in ("PAID", "ACTIVE", "SUCCESS"):
+                    order_status = data.get("order_status", "")
+                    logger.info(
+                        "Cashfree order %s status: %s", order_id, order_status
+                    )
+                    if order_status in ("PAID", "ACTIVE"):
                         user.subscription_tier = "pro"
                         user.subscription_status = "active"
                         await db.commit()
                         return {"status": "active", "tier": "pro", "order_id": order_id}
-            except Exception:
-                pass
-
-        # If simulated or sandbox direct verification, set active for testing verification flow
-        user.subscription_tier = "pro"
-        user.subscription_status = "active"
-        await db.commit()
-        return {"status": "active", "tier": "pro", "order_id": order_id}
+                    else:
+                        return {"status": order_status.lower(), "tier": "free", "order_id": order_id}
+                else:
+                    logger.error(
+                        "Cashfree verify order %s failed: %s %s",
+                        order_id, resp.status_code, resp.text,
+                    )
+                    return {"status": "unknown", "tier": "free", "order_id": order_id}
+            except Exception as e:
+                logger.error("Cashfree verify exception for %s: %s", order_id, e)
+                return {"status": "error", "tier": "free", "order_id": order_id}
 
     async def handle_webhook(
         self, raw_body: bytes, signature: str, timestamp: str, db: AsyncSession
@@ -149,14 +160,17 @@ class CashfreeBillingService:
                 hashlib.sha256,
             )
             computed_sig = base64.b64encode(computed_hmac.digest()).decode("utf-8")
-            if not hmac.compare_digest(computed_sig, signature) and signature != "SIMULATED_SIG":
+            if not hmac.compare_digest(computed_sig, signature):
                 raise HTTPException(status_code=401, detail="Invalid webhook signature")
 
         payload = json.loads(raw_body.decode("utf-8"))
         data = payload.get("data", {})
         order = data.get("order", {})
+        payment = data.get("payment", {})
         order_id = order.get("order_id") or payload.get("order_id")
         event_type = payload.get("type", "")
+
+        logger.info("Cashfree webhook received: type=%s order_id=%s", event_type, order_id)
 
         if not order_id:
             return {"status": "ignored", "reason": "no_order_id"}
@@ -164,15 +178,16 @@ class CashfreeBillingService:
         stmt = select(User).where(User.cashfree_subscription_id == order_id)
         result = await db.execute(stmt)
         user = result.scalar_one_or_none()
+
         if user and (
-            "PAID" in event_type
-            or "SUCCESS" in event_type
-            or "ACTIVE" in event_type
+            event_type == "PAYMENT_SUCCESS_WEBHOOK"
             or order.get("order_status") == "PAID"
+            or payment.get("payment_status") == "SUCCESS"
         ):
             user.subscription_tier = "pro"
             user.subscription_status = "active"
             await db.commit()
+            logger.info("User %s upgraded to Pro via webhook", user.id)
             return {"status": "processed", "user_id": str(user.id), "tier": "pro"}
 
         return {"status": "received", "order_id": order_id}

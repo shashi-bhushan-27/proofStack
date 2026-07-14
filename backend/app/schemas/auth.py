@@ -27,6 +27,9 @@ class UserResponse(BaseModel):
     email: str
     full_name: str | None
     is_active: bool
+    subscription_tier: str | None = "free"
+    subscription_status: str | None = "inactive"
+    daily_analyses_count: int = 0
     created_at: datetime
 
 

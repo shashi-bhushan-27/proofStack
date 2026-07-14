@@ -29,20 +29,15 @@ function BillingStatusContent() {
 
       try {
         const response = await billingApi.getStatus(orderId);
-        if (response.data.status === "active" || urlStatus === "PAID" || urlStatus === "SUCCESS") {
+        if (response.data.status === "active") {
           setSuccess(true);
           await refreshUser();
         } else {
           setSuccess(false);
-          setErrorMsg("Payment authorization is pending or failed.");
+          setErrorMsg(`Payment status: ${response.data.status}. If you completed the payment, it may take a moment to process.`);
         }
       } catch (err: any) {
-        if (urlStatus === "PAID" || urlStatus === "SUCCESS" || urlStatus === "ACTIVE") {
-          setSuccess(true);
-          await refreshUser();
-        } else {
-          setErrorMsg("Could not verify order status from server.");
-        }
+        setErrorMsg("Could not verify order status from server. Please check your billing page in a few minutes.");
       } finally {
         setVerifying(false);
       }
