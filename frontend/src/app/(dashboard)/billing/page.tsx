@@ -86,9 +86,9 @@ export default function BillingPage() {
         return;
       }
 
-      // Initialize Cashfree Checkout
+      const cashfreeMode = (process.env.NEXT_PUBLIC_CASHFREE_MODE || "sandbox") as "sandbox" | "production";
       const cashfree = window.Cashfree({
-        mode: process.env.NODE_ENV === "production" ? "production" : "sandbox",
+        mode: cashfreeMode,
       });
 
       await cashfree.checkout({
@@ -234,7 +234,7 @@ export default function BillingPage() {
                     </h3>
                     <div className="mt-4 flex items-baseline gap-1">
                       <span className="text-4xl sm:text-5xl font-extrabold text-white">
-                        ${plan.price}
+                        {plan.currency === "INR" ? "₹" : "$"}{plan.price}
                       </span>
                       <span className="text-slate-400 text-sm">/{plan.interval}</span>
                     </div>

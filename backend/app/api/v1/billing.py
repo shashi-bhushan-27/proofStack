@@ -27,7 +27,7 @@ async def get_plans() -> dict[str, Any]:
                 "id": "free",
                 "name": "Free Starter",
                 "price": 0,
-                "currency": "USD",
+                "currency": "INR",
                 "interval": "month",
                 "features": [
                     "3 AI Resume Analyses per day",
@@ -40,8 +40,8 @@ async def get_plans() -> dict[str, Any]:
             {
                 "id": "pro",
                 "name": "Pro Intelligence",
-                "price": 29,
-                "currency": "USD",
+                "price": 499,
+                "currency": "INR",
                 "interval": "month",
                 "features": [
                     "Unlimited AI Resume Analyses",
