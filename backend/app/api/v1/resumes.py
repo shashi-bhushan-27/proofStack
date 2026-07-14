@@ -5,7 +5,12 @@ import uuid
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.deps import get_current_user, get_current_user_optional, verify_ownership
+from app.api.deps import (
+    enforce_daily_analysis_limit,
+    get_current_user,
+    get_current_user_optional,
+    verify_ownership,
+)
 from app.db.session import get_db
 from app.models.user import User
 from app.schemas.resume import ResumeListResponse, ResumeResponse
@@ -31,6 +36,7 @@ async def upload_resume_endpoint(
     current_user: User | None = Depends(get_current_user_optional),
 ) -> ResumeResponse:
     """Upload and parse a PDF resume. Works for both guests and authenticated users."""
+    enforce_daily_analysis_limit(current_user, increment=False)
     user_id = current_user.id if current_user else None
     resume = await upload_resume(db, file, user_id=user_id)
     return ResumeResponse.model_validate(resume)

@@ -11,6 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.api.deps import (
+    enforce_daily_analysis_limit,
     get_current_user,
     get_current_user_optional,
     verify_guest_token,
@@ -97,18 +98,7 @@ async def create_analysis(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Resume not found")
 
     # Enforce Subscription & Product Functionality Gating (Free vs Pro)
-    if current_user and current_user.subscription_tier == "free":
-        now_utc = datetime.now(timezone.utc)
-        today = now_utc.date()
-        if not current_user.last_analysis_date or current_user.last_analysis_date.date() < today:
-            current_user.daily_analyses_count = 0
-            current_user.last_analysis_date = now_utc
-        if current_user.daily_analyses_count >= 3:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="Daily analysis limit (3/day) reached on Free tier. Upgrade to Pro for unlimited AI evaluations."
-            )
-        current_user.daily_analyses_count += 1
+    enforce_daily_analysis_limit(current_user, increment=True)
 
 
     # Create job description record

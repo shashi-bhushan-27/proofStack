@@ -3,7 +3,7 @@
 from fastapi import APIRouter, Depends, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.deps import get_current_user_optional
+from app.api.deps import enforce_daily_analysis_limit, get_current_user_optional
 from app.db.session import get_db
 from app.models.job_description import JobDescription
 from app.models.user import User
@@ -24,6 +24,7 @@ async def create_job_description(
     current_user: User | None = Depends(get_current_user_optional),
 ) -> JobDescriptionResponse:
     """Store a job description. Works for both guests and authenticated users."""
+    enforce_daily_analysis_limit(current_user, increment=False)
     jd = JobDescription(
         user_id=current_user.id if current_user else None,
         job_title=payload.job_title,

@@ -159,3 +159,35 @@ def verify_guest_token(token: str, expected_analysis_id: uuid.UUID) -> bool:
         return payload.get("sub") == str(expected_analysis_id)
     except (jwt.ExpiredSignatureError, jwt.InvalidTokenError):
         return False
+
+
+def enforce_daily_analysis_limit(current_user: User | None, increment: bool = False) -> None:
+    """Check and enforce the 3 analyses/day limit for Free tier users."""
+    if not current_user or current_user.subscription_tier != "free":
+        return
+
+    from datetime import datetime, timezone
+    now_utc = datetime.now(timezone.utc)
+    today = now_utc.date()
+
+    last_date = current_user.last_analysis_date
+    if last_date:
+        if last_date.tzinfo is None:
+            last_date = last_date.replace(tzinfo=timezone.utc)
+        last_date_only = last_date.astimezone(timezone.utc).date()
+    else:
+        last_date_only = None
+
+    if not last_date_only or last_date_only < today:
+        current_user.daily_analyses_count = 0
+        current_user.last_analysis_date = now_utc
+
+    if current_user.daily_analyses_count >= 3:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Daily analysis limit (3/3) reached on the Free plan. Upgrade to Pro for unlimited evaluations."
+        )
+
+    if increment:
+        current_user.daily_analyses_count += 1
+        current_user.last_analysis_date = now_utc

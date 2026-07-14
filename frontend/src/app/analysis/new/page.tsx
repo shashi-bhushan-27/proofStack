@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Header } from "@/components/layout/header";
 import { Footer } from "@/components/layout/footer";
 import { resumeApi, analysisApi } from "@/lib/api";
+import { useAuth } from "@/providers/providers";
 import { formatFileSize, getStatusInfo } from "@/lib/utils";
 import {
   UploadCloud,
@@ -21,7 +22,26 @@ import {
 
 export default function NewAnalysisWizard() {
   const router = useRouter();
+  const { user, isAuthenticated, refreshUser } = useAuth();
   const [step, setStep] = useState<1 | 2 | 3 | 4>(1);
+
+  const [guestCount, setGuestCount] = useState(0);
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const count = parseInt(localStorage.getItem("guest_analyses_count") || "0", 10);
+      setGuestCount(count);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (isAuthenticated) {
+      refreshUser();
+    }
+  }, [isAuthenticated, refreshUser]);
+
+  const isFreeLimitReached =
+    (isAuthenticated && user?.subscription_tier === "free" && (user?.daily_analyses_count ?? 0) >= 3) ||
+    (!isAuthenticated && guestCount >= 3);
 
   // Step 1 State: Resume upload
   const [file, setFile] = useState<File | null>(null);
@@ -98,6 +118,11 @@ export default function NewAnalysisWizard() {
       const createdId = res.data.analysis.id;
       if (res.data.guest_token) {
         localStorage.setItem(`guest_token_${createdId}`, res.data.guest_token);
+        const newCount = guestCount + 1;
+        setGuestCount(newCount);
+        localStorage.setItem("guest_analyses_count", newCount.toString());
+      } else if (isAuthenticated) {
+        refreshUser();
       }
       setAnalysisId(createdId);
       setAnalysisStatus(res.data.analysis.status || "pending");
@@ -182,8 +207,42 @@ export default function NewAnalysisWizard() {
             </div>
           </div>
 
-          {/* STEP 1: Upload Resume */}
-          {step === 1 && (
+          {isFreeLimitReached ? (
+            <div className="rounded-2xl border border-amber-500/30 bg-gradient-to-br from-slate-900 via-slate-900 to-amber-950/30 p-8 sm:p-10 text-center shadow-2xl space-y-6 animate-fade-in">
+              <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-amber-500/10 border border-amber-500/30">
+                <Sparkles className="h-8 w-8 text-amber-400" />
+              </div>
+              <div className="space-y-2">
+                <span className="rounded-full bg-amber-500/10 px-3 py-1 text-xs font-bold uppercase tracking-wider text-amber-400 border border-amber-500/20">
+                  Daily Limit Reached (3/3)
+                </span>
+                <h2 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-white">
+                  You&apos;ve Used All 3 Free Evaluations Today
+                </h2>
+                <p className="max-w-md mx-auto text-sm text-slate-300 leading-relaxed">
+                  Upgrade to Pro to instantly unlock unlimited AI resume evaluations, deep STAR-bullet interrogation interviews, and priority evidence extraction.
+                </p>
+              </div>
+
+              <div className="pt-4 flex flex-col sm:flex-row items-center justify-center gap-4">
+                <button
+                  onClick={() => router.push("/billing")}
+                  className="w-full sm:w-auto flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-indigo-600 via-indigo-500 to-purple-600 px-8 py-3.5 text-sm font-bold text-white shadow-lg shadow-indigo-500/25 hover:opacity-95 transition-all"
+                >
+                  <Sparkles className="h-4 w-4" /> Upgrade to Pro Now
+                </button>
+                <button
+                  onClick={() => router.push("/dashboard")}
+                  className="w-full sm:w-auto rounded-xl border border-slate-700 bg-slate-900 px-6 py-3.5 text-sm font-semibold text-slate-300 hover:bg-slate-800 transition-colors"
+                >
+                  View My Past Analyses
+                </button>
+              </div>
+            </div>
+          ) : (
+            <>
+              {/* STEP 1: Upload Resume */}
+              {step === 1 && (
             <div className="rounded-2xl border border-slate-800 bg-slate-900/50 p-6 sm:p-8 shadow-xl backdrop-blur-md animate-fade-in">
               <h2 className="text-lg font-bold text-white mb-2">Upload Candidate Resume (PDF)</h2>
               <p className="text-xs text-slate-400 mb-6">
@@ -435,6 +494,8 @@ export default function NewAnalysisWizard() {
                 </div>
               )}
             </div>
+          )}
+            </>
           )}
         </div>
       </main>
