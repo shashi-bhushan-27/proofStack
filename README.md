@@ -12,7 +12,7 @@
 [![PostgreSQL](https://img.shields.io/badge/PostgreSQL%2016-316192?style=for-the-badge&logo=postgresql&logoColor=white)](https://postgresql.org/)
 [![Firebase Auth](https://img.shields.io/badge/Firebase%20Auth-FFCA28?style=for-the-badge&logo=firebase&logoColor=black)](https://firebase.google.com/)
 [![Cashfree PG](https://img.shields.io/badge/Cashfree%20Payments-5C13D4?style=for-the-badge&logo=stripe&logoColor=white)](https://cashfree.com/)
-[![Groq Llama 3.1](https://img.shields.io/badge/AI%20Engine-Groq%20Llama%203.1--70B-F55036?style=for-the-badge)](https://groq.com/)
+[![Google Gemini 3.1](https://img.shields.io/badge/AI%20Engine-Google%20Gemini%203.1--Flash%20Lite-4285F4?style=for-the-badge&logo=google&logoColor=white)](https://ai.google.dev/)
 
 </div>
 
@@ -22,7 +22,7 @@
 
 Traditional Applicant Tracking Systems (ATS) rely on superficial keyword matching. If a candidate lists *"Kubernetes, Docker, Redis, and FastAPI"* in a bulleted skill section, standard keyword scanners assign a 100% match score—even if the candidate has never deployed a container or built a production system.
 
-**proofStack** bridges this gap by shifting the paradigm from **Keyword Recognition** to **Evidence Verification**. Powered by advanced LLMs (Groq Llama 3.1 70B & Google Gemini) combined with a **deterministic backend scoring engine**, proofStack extracts semantic skill claims, locates concrete proof within project descriptions and work history, and grades implementation depth.
+**proofStack** bridges this gap by shifting the paradigm from **Keyword Recognition** to **Evidence Verification**. Powered by advanced LLMs (**Google Gemini 3.1 Flash Lite (`gemini-3.1-flash-lite`)** via OpenAI compatibility layer & `instructor`) combined with a **deterministic backend scoring engine**, proofStack extracts semantic skill claims, locates concrete proof within project descriptions and work history, and grades implementation depth.
 
 ---
 
@@ -78,14 +78,14 @@ graph TD
         AuthDeps[JWT & Firebase Token Guard]
         BillingSvc[Cashfree Billing Service]
         ScoringEngine[Deterministic 5-Dimension Scoring Engine]
-        LLMSvc[Groq / Gemini AI Orchestrator]
+        LLMSvc[Google Gemini 3.1 AI Orchestrator]
     end
 
     subgraph Data & External [Storage, DB & Third-Party APIs]
         DB[(PostgreSQL Database)]
         Firebase[(Firebase Auth Server)]
         CashfreeAPI[(Cashfree Payments Gateway)]
-        GroqAPI[(Groq Llama 3.1 70B API)]
+        GeminiAPI[(Google Gemini 3.1 API Server)]
     end
 
     UI -->|Bearer Token / API Requests| API
@@ -97,7 +97,7 @@ graph TD
     CashfreeAPI -->|HMAC Webhook Post| BillingSvc
     BillingSvc -->|Upgrade Subscription Tier| DB
     API -->|Parse Resume & JD| LLMSvc
-    LLMSvc <-->|Structured JSON Evaluation| GroqAPI
+    LLMSvc <-->|Structured JSON Evaluation| GeminiAPI
     LLMSvc -->|Raw Evidence Tiers| ScoringEngine
     ScoringEngine -->|Save Evaluation Metrics| DB
 ```
@@ -114,7 +114,7 @@ graph TD
 | **Backend Framework** | [FastAPI](https://fastapi.tiangolo.com/), Python 3.11+, Uvicorn |
 | **Database & ORM** | PostgreSQL 16, [SQLAlchemy 2.0+ (Async)](https://www.sqlalchemy.org/), AsyncPG, Alembic Migrations |
 | **Data Validation** | Pydantic v2 (`SettingsConfigDict`, Strict Type Validation) |
-| **AI / LLM Orchestration** | Groq API (`llama-3.1-70b-versatile`), Google Gemini AI (`gemini-2.5-flash`), Instructor |
+| **AI / LLM Orchestration** | **Google Gemini 3.1 Flash Lite (`gemini-3.1-flash-lite`)** via OpenAI Compatibility (`instructor`) |
 | **Authentication** | Firebase Authentication (Google, GitHub, Email/Password), PyJWT |
 | **Payments Gateway** | Cashfree Payments PG API (`v2025-01-01`), Cashfree Webhooks, JS SDK v3 |
 
@@ -127,7 +127,7 @@ graph TD
 - **Python** 3.11+
 - **PostgreSQL** 16+ (Local instance, Docker, or [Supabase](https://supabase.com/))
 - **API Keys**:
-  - [Groq Console API Key](https://console.groq.com/) (Free Tier available)
+  - [Google AI Studio Gemini API Key](https://aistudio.google.com/) (`gemini-3.1-flash-lite`)
   - [Firebase Project Configuration](https://console.firebase.google.com/)
   - [Cashfree Merchant Sandbox Account](https://merchant.cashfree.com/)
 
@@ -187,9 +187,9 @@ CASHFREE_ENVIRONMENT=Sandbox
 CASHFREE_WEBHOOK_SECRET=TEST_WEBHOOK_SECRET
 
 # ── LLM / AI Engine ──────────────────────────────────────────────────
-GROQ_API_KEY=gsk_your_groq_api_key_here
-LLM_PROVIDER=groq
-LLM_MODEL=llama-3.1-70b-versatile
+GEMINI_API_KEY=AIzaSy_your_gemini_api_key_here
+LLM_PROVIDER=gemini
+LLM_MODEL=gemini-3.1-flash-lite
 ```
 
 4. Run database migrations using Alembic:
@@ -359,7 +359,7 @@ proofStack/
 2. Set the **Root Directory** to `backend`.
 3. **Build Command**: `pip install -r requirements.txt`
 4. **Start Command**: `uvicorn app.main:app --host 0.0.0.0 --port $PORT`
-5. Under **Environment**, add your `DATABASE_URL` (using port `6543` for Supabase connection poolers), `GROQ_API_KEY`, and production Cashfree `CASHFREE_APP_ID`, `CASHFREE_SECRET_KEY`, and `CASHFREE_WEBHOOK_SECRET`.
+5. Under **Environment**, add your `DATABASE_URL` (using port `6543` for Supabase connection poolers), `GEMINI_API_KEY`, and production Cashfree `CASHFREE_APP_ID`, `CASHFREE_SECRET_KEY`, and `CASHFREE_WEBHOOK_SECRET`.
 
 ---
 
