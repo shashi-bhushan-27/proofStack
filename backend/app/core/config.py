@@ -37,7 +37,7 @@ class Settings(BaseSettings):
     FIREBASE_CREDENTIALS_PATH: str | None = "/app/firebase-credentials.json"
 
     # ── Cashfree Billing & Subscriptions ─────────────────────────────────
-    CASHFREE_APP_ID: str = "TEST11139498d3f12f7c309630222124894931l1"
+    CASHFREE_APP_ID: str = "TEST11139498d3f12f7c30963022212489493111"
     CASHFREE_SECRET_KEY: str = "cfsk_ma_test_f541c8559993bb4e3f68af0f066a2ffc_e380cdcd"
     CASHFREE_ENVIRONMENT: str = "Sandbox"  # "Sandbox" or "Production"
     CASHFREE_WEBHOOK_SECRET: str = "TEST_WEBHOOK_SECRET"
