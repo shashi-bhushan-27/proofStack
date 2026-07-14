@@ -58,7 +58,7 @@ export default function AnalysisReportPage() {
         const headers: Record<string, string> = {};
         if (token) headers.Authorization = `Bearer ${token}`;
 
-        const res = await analysisApi.get(analysisId);
+        const res = await analysisApi.get(analysisId, token || undefined);
         setAnalysis(res.data);
         if (res.data.skill_evidences && res.data.skill_evidences.length > 0) {
           setSelectedSkill(res.data.skill_evidences[0]);

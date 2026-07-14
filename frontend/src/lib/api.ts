@@ -32,7 +32,7 @@ function createApiClient(): AxiosInstance {
         } catch {
           // Fallback to localStorage token if Firebase ID token retrieval fails
         }
-        if (token && config.headers) {
+        if (config.headers && !config.headers.Authorization && token && token !== "undefined" && token !== "null") {
           config.headers.Authorization = `Bearer ${token}`;
         }
       }
@@ -132,16 +132,24 @@ export const analysisApi = {
 
   list: () => api.get("/analyses"),
 
-  get: (id: string) => api.get(`/analyses/${id}`),
+  get: (id: string, token?: string) => api.get(`/analyses/${id}`, {
+    headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+  }),
 
   delete: (id: string) => api.delete(`/analyses/${id}`),
 
-  getSkills: (id: string) => api.get(`/analyses/${id}/skills`),
+  getSkills: (id: string, token?: string) => api.get(`/analyses/${id}/skills`, {
+    headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+  }),
 
-  getSkillDetail: (analysisId: string, skillId: string) =>
-    api.get(`/analyses/${analysisId}/skills/${skillId}`),
+  getSkillDetail: (analysisId: string, skillId: string, token?: string) =>
+    api.get(`/analyses/${analysisId}/skills/${skillId}`, {
+      headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+    }),
 
-  getRecommendations: (id: string) => api.get(`/analyses/${id}/recommendations`),
+  getRecommendations: (id: string, token?: string) => api.get(`/analyses/${id}/recommendations`, {
+    headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+  }),
 };
 
 // ==========================================

@@ -119,7 +119,7 @@ export default function NewAnalysisWizard() {
 
     const interval = setInterval(async () => {
       try {
-        const res = await analysisApi.get(analysisId);
+        const res = await analysisApi.get(analysisId, token || undefined);
         const currentStatus = res.data.status;
         setAnalysisStatus(currentStatus);
 
