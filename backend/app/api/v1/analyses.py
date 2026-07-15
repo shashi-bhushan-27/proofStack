@@ -41,9 +41,13 @@ router = APIRouter()
 async def _get_analysis_or_404(
     analysis_id: uuid.UUID,
     db: AsyncSession,
+    options: list[Any] | None = None,
 ) -> Analysis:
     """Fetch an analysis by ID or raise 404."""
-    result = await db.execute(select(Analysis).where(Analysis.id == analysis_id))
+    stmt = select(Analysis).where(Analysis.id == analysis_id)
+    if options:
+        stmt = stmt.options(*options)
+    result = await db.execute(stmt)
     analysis = result.scalar_one_or_none()
     if analysis is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Analysis not found")
@@ -172,11 +176,17 @@ async def get_analysis(
     authorization: str | None = Header(None),
 ) -> AnalysisDetailResponse:
     """Get full analysis details including scores, evidence, and recommendations."""
-    analysis = await _get_analysis_or_404(analysis_id, db)
+    analysis = await _get_analysis_or_404(
+        analysis_id,
+        db,
+        options=[
+            selectinload(Analysis.job_requirements),
+            selectinload(Analysis.resume_skills),
+            selectinload(Analysis.skill_evidences),
+            selectinload(Analysis.recommendations),
+        ],
+    )
     await _authorize_analysis_access(analysis, current_user, authorization)
-
-    # Eagerly load child collections
-    await db.refresh(analysis, ["job_requirements", "resume_skills", "skill_evidences", "recommendations"])
 
     return AnalysisDetailResponse(
         **AnalysisResponse.model_validate(analysis).model_dump(),

@@ -82,19 +82,19 @@ class Analysis(Base):
     resume: Mapped["Resume"] = relationship(back_populates="analyses")  # noqa: F821
     job_description: Mapped["JobDescription"] = relationship(back_populates="analyses")  # noqa: F821
     job_requirements: Mapped[list["JobRequirement"]] = relationship(  # noqa: F821
-        back_populates="analysis", cascade="all, delete-orphan", lazy="selectin"
+        back_populates="analysis", cascade="all, delete-orphan", lazy="noload"
     )
     resume_skills: Mapped[list["ResumeSkill"]] = relationship(  # noqa: F821
-        back_populates="analysis", cascade="all, delete-orphan", lazy="selectin"
+        back_populates="analysis", cascade="all, delete-orphan", lazy="noload"
     )
     skill_evidences: Mapped[list["SkillEvidence"]] = relationship(  # noqa: F821
-        back_populates="analysis", cascade="all, delete-orphan", lazy="selectin"
+        back_populates="analysis", cascade="all, delete-orphan", lazy="noload"
     )
     recommendations: Mapped[list["Recommendation"]] = relationship(  # noqa: F821
-        back_populates="analysis", cascade="all, delete-orphan", lazy="selectin"
+        back_populates="analysis", cascade="all, delete-orphan", lazy="noload"
     )
     interrogation_sessions: Mapped[list["InterrogationSession"]] = relationship(  # noqa: F821
-        back_populates="analysis", cascade="all, delete-orphan", lazy="selectin"
+        back_populates="analysis", cascade="all, delete-orphan", lazy="noload"
     )
 
     __table_args__ = (
