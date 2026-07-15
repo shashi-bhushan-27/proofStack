@@ -40,7 +40,7 @@ async def get_plans() -> dict[str, Any]:
             {
                 "id": "pro",
                 "name": "Pro Intelligence",
-                "price": 499,
+                "price": 10,
                 "currency": "INR",
                 "interval": "month",
                 "features": [

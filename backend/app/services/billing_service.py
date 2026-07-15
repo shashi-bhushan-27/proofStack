@@ -44,7 +44,7 @@ class CashfreeBillingService:
     ) -> dict[str, Any]:
         """Create a Cashfree order / checkout session for subscription upgrade."""
         order_id = f"sub_{uuid.uuid4().hex[:16]}"
-        amount = 499.00 if plan_id == "pro" else 1999.00
+        amount = 10.00 if plan_id == "pro" else 1999.00
 
         payload = {
             "order_id": order_id,
