@@ -3,7 +3,10 @@
 Provides reusable Depends() callables for route handlers.
 """
 
+import asyncio
+import json
 import uuid
+from datetime import datetime, timezone
 
 import jwt
 from fastapi import Depends, HTTPException, status
@@ -11,6 +14,7 @@ from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core import cache
 from app.core.config import settings
 from app.core.security import decode_access_token, verify_firebase_token
 from app.db.session import get_db
@@ -18,6 +22,45 @@ from app.models.user import User
 
 _bearer_scheme = HTTPBearer(auto_error=True)
 _bearer_scheme_optional = HTTPBearer(auto_error=False)
+
+
+def _user_dict_from_model(user: User) -> dict:
+    d = {}
+    for c in user.__table__.columns:
+        val = getattr(user, c.name)
+        if isinstance(val, uuid.UUID):
+            d[c.name] = str(val)
+        elif hasattr(val, "isoformat"):
+            d[c.name] = val.isoformat()
+        else:
+            d[c.name] = val
+    return d
+
+
+async def _user_from_dict(d: dict, db: AsyncSession) -> User:
+    user_data = d.copy()
+    if "id" in user_data and isinstance(user_data["id"], str):
+        user_data["id"] = uuid.UUID(user_data["id"])
+    if "created_at" in user_data and isinstance(user_data["created_at"], str):
+        user_data["created_at"] = datetime.fromisoformat(user_data["created_at"])
+    if "updated_at" in user_data and isinstance(user_data["updated_at"], str):
+        user_data["updated_at"] = datetime.fromisoformat(user_data["updated_at"])
+    if "last_analysis_date" in user_data and user_data["last_analysis_date"] and isinstance(user_data["last_analysis_date"], str):
+        user_data["last_analysis_date"] = datetime.fromisoformat(user_data["last_analysis_date"])
+    user = User(**user_data)
+    return await db.merge(user)
+
+
+async def _cache_and_return_user(user: User | None, db: AsyncSession) -> User | None:
+    if user and user.is_active and user.firebase_uid:
+        try:
+            await db.refresh(user)
+        except Exception:
+            pass
+        ud = _user_dict_from_model(user)
+        cache.set_l1_auth_cache(user.firebase_uid, ud, ttl_seconds=60)
+        await cache.set_compressed_json(f"auth:user:{user.firebase_uid}", json.dumps(ud), expire=900)  # 15 mins
+    return user if (user and user.is_active) else None
 
 
 async def _get_or_sync_user(claims: dict, db: AsyncSession) -> User | None:
@@ -28,20 +71,39 @@ async def _get_or_sync_user(claims: dict, db: AsyncSession) -> User | None:
     uid = claims.get("uid")
     email = claims.get("email")
 
+    if uid:
+        uid_str = str(uid)
+        # Check L1 memory
+        l1_dict = cache.get_l1_auth_cache(uid_str)
+        if l1_dict:
+            user = await _user_from_dict(l1_dict, db)
+            return user if user.is_active else None
+
+        # Check L2 Upstash Redis
+        l2_json = await cache.get_compressed_json(f"auth:user:{uid_str}")
+        if l2_json:
+            try:
+                l2_dict = json.loads(l2_json)
+                cache.set_l1_auth_cache(uid_str, l2_dict, ttl_seconds=60)
+                user = await _user_from_dict(l2_dict, db)
+                return user if user.is_active else None
+            except Exception:
+                pass
+
     # 1. If uid is a valid UUID, first try looking up directly by User.id (for legacy/test JWTs)
     if uid:
         try:
             user_uuid = uuid.UUID(str(uid))
             result = await db.execute(select(User).where(User.id == user_uuid))
             if user := result.scalar_one_or_none():
-                return user if user.is_active else None
+                return await _cache_and_return_user(user, db)
         except ValueError:
             pass
 
         # 2. Look up by firebase_uid
         result = await db.execute(select(User).where(User.firebase_uid == str(uid)))
         if user := result.scalar_one_or_none():
-            return user if user.is_active else None
+            return await _cache_and_return_user(user, db)
 
     # 3. Look up by email (to link existing legacy user account or find email-matched user)
     if email:
@@ -52,7 +114,7 @@ async def _get_or_sync_user(claims: dict, db: AsyncSession) -> User | None:
             if uid and not user.firebase_uid:
                 user.firebase_uid = str(uid)
                 await db.flush()
-            return user
+            return await _cache_and_return_user(user, db)
 
         # 4. If neither found and we have both uid/email from Firebase, auto-create PostgreSQL User
         if uid and email:
@@ -67,7 +129,7 @@ async def _get_or_sync_user(claims: dict, db: AsyncSession) -> User | None:
             db.add(new_user)
             await db.flush()
             await db.refresh(new_user)
-            return new_user
+            return await _cache_and_return_user(new_user, db)
 
     return None
 
@@ -178,9 +240,11 @@ def enforce_daily_analysis_limit(current_user: User | None, increment: bool = Fa
     else:
         last_date_only = None
 
+    modified = False
     if not last_date_only or last_date_only < today:
         current_user.daily_analyses_count = 0
         current_user.last_analysis_date = now_utc
+        modified = True
 
     if current_user.daily_analyses_count >= 3:
         raise HTTPException(
@@ -191,3 +255,12 @@ def enforce_daily_analysis_limit(current_user: User | None, increment: bool = Fa
     if increment:
         current_user.daily_analyses_count += 1
         current_user.last_analysis_date = now_utc
+        modified = True
+
+    if modified and current_user.firebase_uid:
+        cache.delete_l1_auth_cache(current_user.firebase_uid)
+        try:
+            loop = asyncio.get_running_loop()
+            loop.create_task(cache.delete_cache(f"auth:user:{current_user.firebase_uid}"))
+        except RuntimeError:
+            pass

@@ -9,6 +9,7 @@ from app.db.base import Base
 from app.models.user import User
 from app.core.security import create_access_token, verify_firebase_token
 from app.api.deps import _get_or_sync_user
+from app.core import cache
 from app.scoring.engine import ScoringEngine
 from app.scoring.weights import ScoringWeights
 from app.ai.prompts.evidence_classification import SingleSkillEvidenceEvaluation
@@ -49,6 +50,8 @@ def test_verify_firebase_token_local_fallback():
 @pytest.mark.asyncio
 async def test_get_or_sync_user_creation(db_session: AsyncSession):
     """Verify that _get_or_sync_user creates a new User when neither uid nor email exist."""
+    cache.delete_l1_auth_cache("fb_uid_12345")
+    await cache.delete_cache("auth:user:fb_uid_12345")
     claims = {
         "uid": "fb_uid_12345",
         "email": "newuser@proofstack.com",
@@ -68,6 +71,8 @@ async def test_get_or_sync_user_creation(db_session: AsyncSession):
 @pytest.mark.asyncio
 async def test_get_or_sync_user_email_linking(db_session: AsyncSession):
     """Verify that an existing user by email gets their firebase_uid linked automatically."""
+    cache.delete_l1_auth_cache("fb_uid_legacy_999")
+    await cache.delete_cache("auth:user:fb_uid_legacy_999")
     legacy_user = User(
         id=uuid.uuid4(),
         email="legacy@proofstack.com",

@@ -6,6 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.ai import interrogation_engine, bullet_generator
+from app.core import cache
 from app.models.interrogation import InterrogationSession, InterrogationMessage, InterrogationStatus, MessageRole
 from app.models.skill_evidence import SkillEvidence
 from app.models.user import User
@@ -150,6 +151,7 @@ async def process_message(
     )
     db.add(ai_msg)
     await db.commit()
+    await cache.delete_cache(f"analysis:detail:{session.analysis_id}")
     
     reload_stmt = select(InterrogationSession).where(InterrogationSession.id == session.id).options(selectinload(InterrogationSession.messages))
     reload_res = await db.execute(reload_stmt)
@@ -184,6 +186,7 @@ async def generate_bullet_from_session(
     session.status = InterrogationStatus.COMPLETED
     session.generated_bullet = bullet_res.suggested_bullet
     await db.commit()
+    await cache.delete_cache(f"analysis:detail:{session.analysis_id}")
     
     return GeneratedBulletResponse(
         bullet=bullet_res.suggested_bullet,

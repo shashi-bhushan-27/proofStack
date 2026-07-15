@@ -25,8 +25,9 @@ class Settings(BaseSettings):
     FRONTEND_URL: str = "http://localhost:3000"
     CORS_ORIGINS: list[str] = ["http://localhost:3000"]
 
-    # ── Database ─────────────────────────────────────────────────────────
+    # ── Database & Cache ─────────────────────────────────────────────────
     DATABASE_URL: str = "postgresql+asyncpg://postgres:postgres@localhost:5432/proofstack"
+    REDIS_URL: str | None = "rediss://default:gQAAAAAAAm6cAAIgcDI1NWJjNTNkYmE3ZmE0Nzg1YWM4ZmEwNGE1NmRmOTg0ZQ@next-camel-159388.upstash.io:6379"
 
     # ── Authentication / JWT ─────────────────────────────────────────────
     SECRET_KEY: str = "CHANGE-ME-IN-PRODUCTION-use-openssl-rand-hex-64"

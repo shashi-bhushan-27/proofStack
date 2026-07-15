@@ -5,7 +5,7 @@ from datetime import datetime, timezone
 from typing import Any
 
 
-from fastapi import APIRouter, BackgroundTasks, Depends, Header, HTTPException, status
+from fastapi import APIRouter, BackgroundTasks, Depends, Header, HTTPException, Response, status
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
@@ -17,6 +17,7 @@ from app.api.deps import (
     verify_guest_token,
     verify_ownership,
 )
+from app.core import cache
 from app.core.security import create_guest_token
 from app.db.session import get_db
 from app.models.analysis import Analysis, AnalysisStatus
@@ -148,10 +149,12 @@ async def create_analysis(
     summary="List user's analyses (auth required)",
 )
 async def list_analyses(
+    response: Response,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> AnalysisListResponse:
     """List all analyses belonging to the authenticated user."""
+    response.headers["Cache-Control"] = "private, max-age=60, must-revalidate"
     result = await db.execute(
         select(Analysis)
         .where(Analysis.user_id == current_user.id)
@@ -176,6 +179,25 @@ async def get_analysis(
     authorization: str | None = Header(None),
 ) -> AnalysisDetailResponse:
     """Get full analysis details including scores, evidence, and recommendations."""
+    cache_key = f"analysis:detail:{analysis_id}"
+    cached_json = await cache.get_compressed_json(cache_key)
+    if cached_json:
+        try:
+            detail_resp = AnalysisDetailResponse.model_validate_json(cached_json)
+            if detail_resp.user_id is not None:
+                if current_user is None:
+                    raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Authentication required")
+                verify_ownership(detail_resp.user_id, current_user, "analysis")
+            elif authorization:
+                token = authorization.replace("Bearer ", "").replace("bearer ", "")
+                if not verify_guest_token(token, detail_resp.id):
+                    pass
+            return detail_resp
+        except HTTPException:
+            raise
+        except Exception:
+            pass
+
     analysis = await _get_analysis_or_404(
         analysis_id,
         db,
@@ -188,7 +210,7 @@ async def get_analysis(
     )
     await _authorize_analysis_access(analysis, current_user, authorization)
 
-    return AnalysisDetailResponse(
+    detail_resp = AnalysisDetailResponse(
         **AnalysisResponse.model_validate(analysis).model_dump(),
         scoring_breakdown=analysis.scoring_breakdown,
         job_requirements=[
@@ -243,6 +265,13 @@ async def get_analysis(
             for rec in analysis.recommendations
         ],
     )
+    if analysis.status == AnalysisStatus.completed:
+        await cache.set_compressed_json(
+            cache_key,
+            detail_resp.model_dump_json(),
+            expire=604800,  # 7 days
+        )
+    return detail_resp
 
 
 @router.delete(
@@ -260,6 +289,7 @@ async def delete_analysis(
     verify_ownership(analysis.user_id, current_user, "analysis")
     await db.delete(analysis)
     await db.flush()
+    await cache.delete_cache(f"analysis:detail:{analysis_id}")
 
 
 @router.get(
