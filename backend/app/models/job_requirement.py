@@ -65,7 +65,7 @@ class JobRequirement(Base):
     # ── Relationships ────────────────────────────────────────────────────
     analysis: Mapped["Analysis"] = relationship(back_populates="job_requirements")  # noqa: F821
     skill_evidences: Mapped[list["SkillEvidence"]] = relationship(  # noqa: F821
-        back_populates="job_requirement", cascade="all, delete-orphan", lazy="selectin"
+        back_populates="job_requirement", cascade="all, delete-orphan", lazy="noload"
     )
 
     __table_args__ = (
