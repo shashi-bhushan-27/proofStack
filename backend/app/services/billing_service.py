@@ -130,13 +130,16 @@ class CashfreeBillingService:
                     logger.info(
                         "Cashfree order %s status: %s", order_id, order_status
                     )
-                    if order_status in ("PAID", "ACTIVE"):
+                    if order_status == "PAID":
                         user.subscription_tier = "pro"
                         user.subscription_status = "active"
                         await db.commit()
                         return {"status": "active", "tier": "pro", "order_id": order_id}
+                    elif order_status in ("EXPIRED", "CANCELLED", "TERMINATED", "FAILED"):
+                        return {"status": "failed", "tier": "free", "order_id": order_id}
                     else:
-                        return {"status": order_status.lower(), "tier": "free", "order_id": order_id}
+                        # order_status == "ACTIVE" in Cashfree means Order created but payment unpaid/pending
+                        return {"status": "pending", "tier": "free", "order_id": order_id}
                 else:
                     logger.error(
                         "Cashfree verify order %s failed: %s %s",
@@ -179,16 +182,34 @@ class CashfreeBillingService:
         result = await db.execute(stmt)
         user = result.scalar_one_or_none()
 
-        if user and (
-            event_type == "PAYMENT_SUCCESS_WEBHOOK"
+        if not user:
+            return {"status": "ignored", "reason": "user_not_found", "order_id": order_id}
+
+        is_success_event = (
+            event_type in ("PAYMENT_SUCCESS_WEBHOOK", "ORDER_PAID_WEBHOOK", "ORDER_SUCCESS_WEBHOOK")
             or order.get("order_status") == "PAID"
             or payment.get("payment_status") == "SUCCESS"
-        ):
+        ) and event_type not in ("PAYMENT_FAILED_WEBHOOK", "PAYMENT_USER_DROPPED_WEBHOOK", "ORDER_FAILED_WEBHOOK")
+
+        is_failed_event = (
+            event_type in ("PAYMENT_FAILED_WEBHOOK", "PAYMENT_USER_DROPPED_WEBHOOK", "ORDER_FAILED_WEBHOOK")
+            or order.get("order_status") in ("EXPIRED", "CANCELLED", "FAILED")
+            or payment.get("payment_status") in ("FAILED", "CANCELLED", "USER_DROPPED")
+        )
+
+        if is_success_event and not is_failed_event:
             user.subscription_tier = "pro"
             user.subscription_status = "active"
             await db.commit()
-            logger.info("User %s upgraded to Pro via webhook", user.id)
+            logger.info("User %s upgraded to Pro via webhook (%s)", user.id, event_type)
             return {"status": "processed", "user_id": str(user.id), "tier": "pro"}
+        elif is_failed_event:
+            if user.subscription_tier == "pro" and user.cashfree_subscription_id == order_id:
+                user.subscription_tier = "free"
+                user.subscription_status = "failed"
+                await db.commit()
+            logger.info("User %s payment failed/dropped via webhook (%s)", user.id, event_type)
+            return {"status": "failed", "user_id": str(user.id), "tier": "free"}
 
         return {"status": "received", "order_id": order_id}
 
