@@ -33,7 +33,7 @@ class Resume(Base):
     # ── Relationships ────────────────────────────────────────────────────
     user: Mapped["User | None"] = relationship(back_populates="resumes")  # noqa: F821
     analyses: Mapped[list["Analysis"]] = relationship(  # noqa: F821
-        back_populates="resume", cascade="all, delete-orphan", lazy="selectin"
+        back_populates="resume", cascade="all, delete-orphan", lazy="noload"
     )
 
     __table_args__ = (

@@ -25,7 +25,7 @@ class ResumeSkill(Base):
     # ── Relationships ────────────────────────────────────────────────────
     analysis: Mapped["Analysis"] = relationship(back_populates="resume_skills")  # noqa: F821
     skill_evidences: Mapped[list["SkillEvidence"]] = relationship(  # noqa: F821
-        back_populates="resume_skill", cascade="all, delete-orphan", lazy="selectin"
+        back_populates="resume_skill", cascade="all, delete-orphan", lazy="noload"
     )
 
     __table_args__ = (

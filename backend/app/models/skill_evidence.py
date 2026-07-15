@@ -66,10 +66,10 @@ class SkillEvidence(Base):
     job_requirement: Mapped["JobRequirement"] = relationship(back_populates="skill_evidences")  # noqa: F821
     resume_skill: Mapped["ResumeSkill | None"] = relationship(back_populates="skill_evidences")  # noqa: F821
     recommendations: Mapped[list["Recommendation"]] = relationship(  # noqa: F821
-        back_populates="skill_evidence", cascade="all, delete-orphan", lazy="selectin"
+        back_populates="skill_evidence", cascade="all, delete-orphan", lazy="noload"
     )
     interrogation_sessions: Mapped[list["InterrogationSession"]] = relationship(  # noqa: F821
-        back_populates="skill_evidence", cascade="all, delete-orphan", lazy="selectin"
+        back_populates="skill_evidence", cascade="all, delete-orphan", lazy="noload"
     )
 
     __table_args__ = (

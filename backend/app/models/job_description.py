@@ -29,7 +29,7 @@ class JobDescription(Base):
     # ── Relationships ────────────────────────────────────────────────────
     user: Mapped["User | None"] = relationship(back_populates="job_descriptions")  # noqa: F821
     analyses: Mapped[list["Analysis"]] = relationship(  # noqa: F821
-        back_populates="job_description", cascade="all, delete-orphan", lazy="selectin"
+        back_populates="job_description", cascade="all, delete-orphan", lazy="noload"
     )
 
     __table_args__ = (

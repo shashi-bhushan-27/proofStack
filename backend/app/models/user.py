@@ -44,13 +44,13 @@ class User(Base):
 
     # ── Relationships ────────────────────────────────────────────────────
     resumes: Mapped[list["Resume"]] = relationship(  # noqa: F821
-        back_populates="user", cascade="all, delete-orphan", lazy="selectin"
+        back_populates="user", cascade="all, delete-orphan", lazy="noload"
     )
     job_descriptions: Mapped[list["JobDescription"]] = relationship(  # noqa: F821
-        back_populates="user", cascade="all, delete-orphan", lazy="selectin"
+        back_populates="user", cascade="all, delete-orphan", lazy="noload"
     )
     analyses: Mapped[list["Analysis"]] = relationship(  # noqa: F821
-        back_populates="user", cascade="all, delete-orphan", lazy="selectin"
+        back_populates="user", cascade="all, delete-orphan", lazy="noload"
     )
 
     __table_args__ = (

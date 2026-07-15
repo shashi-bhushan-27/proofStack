@@ -46,7 +46,7 @@ async def _get_analysis_or_404(
     """Fetch an analysis by ID or raise 404."""
     stmt = select(Analysis).where(Analysis.id == analysis_id)
     if options:
-        stmt = stmt.options(*options)
+        stmt = stmt.options(*options).execution_options(populate_existing=True)
     result = await db.execute(stmt)
     analysis = result.scalar_one_or_none()
     if analysis is None:
