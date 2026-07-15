@@ -5,7 +5,7 @@ import { useAuth } from "@/providers/providers";
 import { ShieldCheck, LogOut, LayoutDashboard, Sparkles } from "lucide-react";
 
 export function Header() {
-  const { user, isAuthenticated, logout } = useAuth();
+  const { user, isAuthenticated, isLoading, logout } = useAuth();
 
   return (
     <header className="sticky top-0 z-50 w-full border-b border-slate-800/80 bg-slate-950/80 backdrop-blur-md">
@@ -30,7 +30,7 @@ export function Header() {
             <Sparkles className="h-3.5 w-3.5 text-cyan-400" />
             Pricing & Billing
           </Link>
-          {isAuthenticated && (
+          {(isAuthenticated || (isLoading && user)) && (
             <Link href="/dashboard" className="flex items-center gap-1.5 text-indigo-400 hover:text-indigo-300 transition-colors">
               <LayoutDashboard className="h-4 w-4" />
               Dashboard
@@ -39,7 +39,12 @@ export function Header() {
         </nav>
 
         <div className="flex items-center gap-3">
-          {isAuthenticated ? (
+          {isLoading ? (
+            <div className="flex items-center gap-3 animate-pulse py-1">
+              <div className="h-6 w-20 rounded-full bg-slate-800/60 hidden sm:block" />
+              <div className="h-8 w-24 rounded-lg bg-slate-800/60" />
+            </div>
+          ) : isAuthenticated ? (
             <div className="flex items-center gap-4">
               <Link
                 href="/billing"
