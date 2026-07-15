@@ -20,15 +20,24 @@ export function Footer() {
           <p className="text-xs text-slate-500 text-center md:text-left">
             Evidence-Based AI Resume Intelligence Platform. Evaluating real candidate skill implementation depth.
           </p>
-          <div className="flex gap-6 text-xs text-slate-400">
+          <div className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-xs text-slate-400">
             <Link href="/#how-it-works" className="hover:text-slate-200 transition-colors">
               How It Works
             </Link>
-            <Link href="/login" className="hover:text-slate-200 transition-colors">
-              Sign In
-            </Link>
             <Link href="/analysis/new" className="hover:text-slate-200 transition-colors">
-              New Analysis
+              New Evaluation
+            </Link>
+            <Link href="/privacy" className="hover:text-slate-200 transition-colors">
+              Privacy Policy
+            </Link>
+            <Link href="/terms" className="hover:text-slate-200 transition-colors">
+              Terms of Service
+            </Link>
+            <Link href="/refund" className="hover:text-slate-200 transition-colors font-medium text-cyan-400">
+              Cancellation & Refund
+            </Link>
+            <Link href="/contact" className="hover:text-slate-200 transition-colors">
+              Contact Us
             </Link>
           </div>
         </div>
