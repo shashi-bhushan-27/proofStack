@@ -59,12 +59,13 @@ async def get_plans() -> dict[str, Any]:
 @router.post("/checkout")
 async def create_checkout(
     req: CheckoutRequest,
+    request: Request,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> dict[str, Any]:
     """Initiate a Cashfree checkout session to upgrade to Pro."""
     return await billing_service.create_checkout_session(
-        user=current_user, plan_id=req.plan_id, return_url=req.return_url, db=db
+        user=current_user, plan_id=req.plan_id, return_url=req.return_url, db=db, request=request
     )
 
 

@@ -9,7 +9,7 @@ import uuid
 from typing import Any
 
 import httpx
-from fastapi import HTTPException
+from fastapi import HTTPException, Request
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -40,11 +40,19 @@ class CashfreeBillingService:
         }
 
     async def create_checkout_session(
-        self, user: User, plan_id: str, return_url: str, db: AsyncSession
+        self, user: User, plan_id: str, return_url: str, db: AsyncSession, request: Request | None = None
     ) -> dict[str, Any]:
         """Create a Cashfree order / checkout session for subscription upgrade."""
         order_id = f"sub_{uuid.uuid4().hex[:16]}"
         amount = 10.00 if plan_id == "pro" else 1999.00
+
+        backend_base = settings.BACKEND_URL.rstrip("/")
+        if self.env.lower() == "production" and ("localhost" in backend_base or backend_base.startswith("http://")):
+            if request:
+                proto = request.headers.get("x-forwarded-proto", request.url.scheme)
+                host = request.headers.get("x-forwarded-host") or request.headers.get("host") or request.url.netloc
+                if host and proto:
+                    backend_base = f"https://{host}" if self.env.lower() == "production" else f"{proto}://{host}"
 
         payload = {
             "order_id": order_id,
@@ -58,7 +66,7 @@ class CashfreeBillingService:
             },
             "order_meta": {
                 "return_url": f"{return_url}?order_id={order_id}&status={{order_status}}",
-                "notify_url": f"{settings.BACKEND_URL}/api/v1/billing/webhook",
+                "notify_url": f"{backend_base}/api/v1/billing/webhook",
             },
             "order_note": f"proofStack {plan_id.upper()} Subscription",
         }
