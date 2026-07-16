@@ -69,13 +69,13 @@ export function Footer() {
             </h4>
             <div className="space-y-2.5 text-xs text-slate-300">
               <a 
-                href="mailto:shashibhushanvijay@gmail.com" 
+                href="mailto:shashibhushan27072002@gmail.com" 
                 className="flex items-center gap-2.5 hover:text-cyan-400 transition-colors group"
               >
                 <div className="p-1.5 rounded-md bg-slate-900 border border-slate-800 text-cyan-400 group-hover:border-cyan-500/30">
                   <Mail className="h-3.5 w-3.5" />
                 </div>
-                <span>shashibhushanvijay@gmail.com</span>
+                <span>shashibhushan27072002@gmail.com</span>
               </a>
               <a 
                 href="tel:+917060049677" 

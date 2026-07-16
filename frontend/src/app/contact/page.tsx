@@ -84,7 +84,7 @@ export default function ContactPage() {
                 
                 <div className="space-y-4 text-sm text-slate-300 pt-2 border-t border-slate-800/80">
                   <a 
-                    href="mailto:shashibhushanvijay@gmail.com"
+                    href="mailto:shashibhushan27072002@gmail.com"
                     className="flex items-start gap-3 hover:text-cyan-400 transition-colors group"
                   >
                     <div className="p-2.5 rounded-xl bg-cyan-500/10 border border-cyan-500/20 text-cyan-400 group-hover:border-cyan-500/40 shrink-0">
@@ -92,7 +92,7 @@ export default function ContactPage() {
                     </div>
                     <div>
                       <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">Email Direct</p>
-                      <p className="font-medium text-white group-hover:text-cyan-400 transition-colors">shashibhushanvijay@gmail.com</p>
+                      <p className="font-medium text-white group-hover:text-cyan-400 transition-colors">shashibhushan27072002@gmail.com</p>
                     </div>
                   </a>
 
@@ -158,7 +158,7 @@ export default function ContactPage() {
                   <div className="space-y-1">
                     <h3 className="text-lg font-bold text-white">Message Sent Successfully!</h3>
                     <p className="text-sm text-slate-300">
-                      Thank you for reaching out. Your message has been delivered to <span className="text-cyan-400 font-medium">shashibhushanvijay@gmail.com</span> via Resend.
+                      Thank you for reaching out. Your message has been delivered to <span className="text-cyan-400 font-medium">shashibhushan27072002@gmail.com</span> via Resend.
                     </p>
                   </div>
                   <button

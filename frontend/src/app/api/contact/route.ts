@@ -13,8 +13,9 @@ export async function POST(req: NextRequest) {
     }
 
     const apiKey = process.env.RESEND_API_KEY || "re_5knakEui_85LWoTRmwj77oKUUgQtA2xsY";
-    const toEmail = process.env.CONTACT_EMAIL || "shashibhushanvijay@gmail.com";
+    const toEmail = process.env.CONTACT_EMAIL || "shashibhushan27072002@gmail.com";
     const fromEmail = process.env.RESEND_FROM_EMAIL || "proofStack Contact <onboarding@resend.dev>";
+
 
     const resendResponse = await fetch("https://api.resend.com/emails", {
       method: "POST",
