@@ -60,6 +60,21 @@ While LLMs perform contextual natural language understanding, **all numerical sc
   - **Pro Intelligence (₹499/month)**: Unlimited AI evaluations, priority LLM queues, deep scoring breakdowns, and full interrogation history.
 - **Seamless Checkout Integration**: Integrated with **Cashfree JS SDK v3** for instant modal/page checkouts supporting UPI, Cards, and Netbanking in INR.
 - **Cryptographic Webhook Verification**: Real-time event notifications (`PAYMENT_SUCCESS_WEBHOOK`) are verified using SHA-256 HMAC signature verification against `x-webhook-signature` and `x-webhook-timestamp` headers.
+- **Robust Order Validations**: Strict verification of Cashfree `PAID` order statuses to prevent subscription bypass on failed/pending payments.
+- **Reverse-Proxy Awareness**: Auto-detects HTTPS callback URLs for Webhooks when running behind Nginx/reverse proxies.
+
+### 🚀 6. Upstash Redis Caching & Hybrid Auth Layer
+- **Centralized Session Caching**: Integrates **Upstash Redis** client to cache frequently requested resources (such as active analyses, metadata, and user contexts).
+- **Payload Compression**: Employs **zlib** compression to minimize bandwidth and latency of serialized JSON strings stored in Redis.
+- **L1 In-Memory Auth Cache**: Features a hybrid cache model with a localized L1 in-memory guard that holds active authentication lookups for a short duration (TTL 60s), drastically reducing redundant network roundtrips to Redis.
+
+### 📧 7. Resend Email Integration & Compliance Portal
+- **Resend Notification Service**: Connects to the **Resend API** to instantly dispatch formatted HTML messages from the dashboard contact page to administrators.
+- **RBI/Compliance Legal Setup**: Implements required compliance routes (`/refund`, `/privacy`, `/terms`, `/contact`) ensuring seamless payment gateway onboarding and compliance.
+
+### 📊 8. Native Analytics & Performance Optimizations
+- **Google & Vercel Analytics**: Out-of-the-box support for Google Analytics 4 (`@next/third-parties`) and Vercel Web Analytics to track platform performance and usage metrics.
+- **N+1 Query Eliminator**: Utilizes SQLAlchemy async relationship options (`selectinload` and `joinedload`) to prevent N+1 database queries on list and detail evaluation requests, boosting API performance.
 
 ---
 
@@ -113,10 +128,13 @@ graph TD
 | **State & Data Fetching** | TanStack React Query (`@tanstack/react-query`), Axios Interceptors |
 | **Backend Framework** | [FastAPI](https://fastapi.tiangolo.com/), Python 3.11+, Uvicorn |
 | **Database & ORM** | PostgreSQL 16, [SQLAlchemy 2.0+ (Async)](https://www.sqlalchemy.org/), AsyncPG, Alembic Migrations |
+| **Caching & Performance** | **Upstash Redis**, **zlib (Payload Compression)**, Hybrid L1 Memory Cache |
 | **Data Validation** | Pydantic v2 (`SettingsConfigDict`, Strict Type Validation) |
 | **AI / LLM Orchestration** | **Google Gemini 3.1 Flash Lite (`gemini-3.1-flash-lite`)** via OpenAI Compatibility (`instructor`) |
 | **Authentication** | Firebase Authentication (Google, GitHub, Email/Password), PyJWT |
 | **Payments Gateway** | Cashfree Payments PG API (`v2025-01-01`), Cashfree Webhooks, JS SDK v3 |
+| **Email Service** | **Resend Mail API** |
+| **Analytics & Telemetry** | **Google Analytics 4** (`@next/third-parties`), **Vercel Web Analytics** |
 
 ---
 
@@ -170,9 +188,10 @@ BACKEND_URL=http://localhost:8000
 FRONTEND_URL=http://localhost:3000
 CORS_ORIGINS=["http://localhost:3000"]
 
-# ── Database (PostgreSQL / Supabase) ─────────────────────────────────
+# ── Database & Cache (PostgreSQL & Upstash Redis) ──────────────────
 # Note: For Supabase Poolers over IPv4, port 6543 is auto-rewritten by session.py
 DATABASE_URL=postgresql+asyncpg://postgres:yourpassword@localhost:5432/proofstack
+REDIS_URL=rediss://default:your-upstash-redis-password@your-upstash-redis-host:6379
 
 # ── Authentication & Firebase ────────────────────────────────────────
 SECRET_KEY=super-secret-jwt-key-for-local-testing-only-64-bytes
@@ -228,6 +247,15 @@ NEXT_PUBLIC_FIREBASE_PROJECT_ID=your_project_id
 NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET=your_project.appspot.com
 NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=your_messaging_sender_id
 NEXT_PUBLIC_FIREBASE_APP_ID=your_firebase_app_id
+NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID=your_firebase_measurement_id
+
+# Resend Mail Configuration (For Admin notifications)
+RESEND_API_KEY=re_your_resend_api_key_here
+CONTACT_EMAIL=shashibhushan27072002@gmail.com
+RESEND_FROM_EMAIL=proofStack Contact <onboarding@resend.dev>
+
+# Google Analytics 4 Configuration
+NEXT_PUBLIC_GA_ID=G-your_ga_id_here
 ```
 
 3. Start the Next.js development server:
@@ -333,7 +361,13 @@ proofStack/
 │   │   ├── app/                   # App Router Pages & Layouts
 │   │   │   ├── (auth)/            # Login & Registration Pages
 │   │   │   ├── (dashboard)/       # Main Evaluation Dashboard, Billing & Status Pages
-│   │   │   └── analysis/          # New Analysis Workflow & Detailed Report Viewers
+│   │   │   ├── api/
+│   │   │   │   └── contact/       # Resend-based Email Contact API Route
+│   │   │   ├── analysis/          # New Analysis Workflow & Detailed Report Viewers
+│   │   │   ├── contact/           # Contact Us portal page
+│   │   │   ├── privacy/           # Privacy Policy page (Compliance)
+│   │   │   ├── refund/            # Refund and Cancellation Policy page (Compliance)
+│   │   │   └── terms/             # Terms and Conditions page (Compliance)
 │   │   ├── components/            # Reusable UI Elements (Headers, Footers, Modals)
 │   │   ├── lib/                   # API Axios Client, Firebase Initialization, Validators
 │   │   ├── providers/             # Auth Context & TanStack React Query Providers
