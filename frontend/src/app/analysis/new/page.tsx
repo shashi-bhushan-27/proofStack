@@ -176,10 +176,10 @@ export default function NewAnalysisWizard() {
           {/* Progress Header */}
           <div className="mb-10 text-center">
             <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">
-              Evaluate Candidate Resume Fit
+              Check Your Resume Fit &amp; Build Evidence
             </h1>
             <p className="mt-2 text-sm text-slate-400">
-              Upload resume PDF and paste target job description to verify actual skill evidence.
+              Upload your resume PDF and paste your target job description to check your shortlist score and strengthen your skills.
             </p>
 
             {/* Step indicator pills */}
@@ -217,10 +217,10 @@ export default function NewAnalysisWizard() {
                   Daily Limit Reached (3/3)
                 </span>
                 <h2 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-white">
-                  You&apos;ve Used All 3 Free Evaluations Today
+                  You&apos;ve Used All 3 Free Resume Checks Today
                 </h2>
                 <p className="max-w-md mx-auto text-sm text-slate-300 leading-relaxed">
-                  Upgrade to Pro to instantly unlock unlimited AI resume evaluations, deep STAR-bullet interrogation interviews, and priority evidence extraction.
+                  Upgrade to Pro to instantly unlock unlimited resume checks, deep STAR-bullet interview coaching, and priority evidence generation.
                 </p>
               </div>
 
@@ -235,7 +235,7 @@ export default function NewAnalysisWizard() {
                   onClick={() => router.push("/dashboard")}
                   className="w-full sm:w-auto rounded-xl border border-slate-700 bg-slate-900 px-6 py-3.5 text-sm font-semibold text-slate-300 hover:bg-slate-800 transition-colors"
                 >
-                  View My Past Analyses
+                  View My Past Checks
                 </button>
               </div>
             </div>
@@ -244,9 +244,9 @@ export default function NewAnalysisWizard() {
               {/* STEP 1: Upload Resume */}
               {step === 1 && (
             <div className="rounded-2xl border border-slate-800 bg-slate-900/50 p-6 sm:p-8 shadow-xl backdrop-blur-md animate-fade-in">
-              <h2 className="text-lg font-bold text-white mb-2">Upload Candidate Resume (PDF)</h2>
+              <h2 className="text-lg font-bold text-white mb-2">Upload Your Resume (PDF)</h2>
               <p className="text-xs text-slate-400 mb-6">
-                We extract all text across summaries, work history, and project sections using PyMuPDF.
+                We analyze your work history and project sections to check your evidence strength.
               </p>
 
               <label className="flex flex-col items-center justify-center rounded-xl border-2 border-dashed border-slate-700 bg-slate-950/60 p-10 text-center hover:border-indigo-500 hover:bg-slate-950/80 cursor-pointer transition-all">
@@ -306,7 +306,7 @@ export default function NewAnalysisWizard() {
             <div className="rounded-2xl border border-slate-800 bg-slate-900/50 p-6 sm:p-8 shadow-xl backdrop-blur-md animate-fade-in">
               <h2 className="text-lg font-bold text-white mb-2">Target Job Description Details</h2>
               <p className="text-xs text-slate-400 mb-6">
-                Paste the exact job requirements so our AI can categorize required vs preferred skills.
+                Paste the exact job description so our AI coach can match your experience to what recruiters are looking for.
               </p>
 
               <div className="space-y-4">
@@ -388,9 +388,9 @@ export default function NewAnalysisWizard() {
           {/* STEP 3: Review Input */}
           {step === 3 && (
             <div className="rounded-2xl border border-slate-800 bg-slate-900/50 p-6 sm:p-8 shadow-xl backdrop-blur-md animate-fade-in">
-              <h2 className="text-lg font-bold text-white mb-2">Review & Start Evaluation</h2>
+              <h2 className="text-lg font-bold text-white mb-2">Review &amp; Check Your Resume</h2>
               <p className="text-xs text-slate-400 mb-6">
-                Verify your resume and target job details before launching our 7-stage evaluation engine.
+                Verify your resume and target job details before launching our 7-stage AI review pipeline.
               </p>
 
               <div className="space-y-4 rounded-xl border border-slate-800 bg-slate-950/60 p-5 text-sm">
@@ -438,11 +438,11 @@ export default function NewAnalysisWizard() {
                 >
                   {isSubmitting ? (
                     <>
-                      <Loader2 className="h-4 w-4 animate-spin" /> Launching Pipeline...
+                      <Loader2 className="h-4 w-4 animate-spin" /> Checking Resume...
                     </>
                   ) : (
                     <>
-                      <Sparkles className="h-4 w-4" /> Start Evidence Evaluation
+                      <Sparkles className="h-4 w-4" /> Start AI Resume Check
                     </>
                   )}
                 </button>

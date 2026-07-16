@@ -20,7 +20,7 @@ export function Footer() {
               </span>
             </div>
             <p className="text-xs text-slate-400 leading-relaxed max-w-sm">
-              Evidence-Based AI Resume Intelligence Platform. Evaluating real candidate skill implementation depth through deep-dive AI interrogation.
+              Personal AI Resume Coach &amp; Evidence Platform. Helping candidates build verifiable proof of skills and generate shortlist-ready STAR bullet points to beat modern ATS.
             </p>
           </div>
 

@@ -24,7 +24,7 @@ export function Header() {
             How It Works
           </Link>
           <Link href="/#evidence-dimensions" className="hover:text-white transition-colors">
-            Evidence Dimensions
+            Shortlist Criteria
           </Link>
           <Link href="/billing" className="hover:text-white transition-colors flex items-center gap-1">
             <Sparkles className="h-3.5 w-3.5 text-cyan-400" />
@@ -81,7 +81,7 @@ export function Header() {
                 className="flex items-center gap-1.5 rounded-lg bg-gradient-to-r from-indigo-500 to-violet-600 px-4 py-2 text-sm font-semibold text-white shadow-md shadow-indigo-500/20 hover:from-indigo-600 hover:to-violet-700 transition-all"
               >
                 <Sparkles className="h-4 w-4" />
-                Try Free Now
+                Check Resume Free
               </Link>
             </div>
           )}
