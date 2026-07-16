@@ -12,7 +12,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const apiKey = process.env.RESEND_API_KEY || "re_S3J5i8D2_Htx5C4i6v2dRKm1aBcMdgVnD";
+    const apiKey = process.env.RESEND_API_KEY || "re_aW7Nks7h_Avzr6A8HxcwqxGt2m7qzGW1j";
     const toEmail = process.env.CONTACT_EMAIL || "shashibhushan27072002@gmail.com";
     const fromEmail = process.env.RESEND_FROM_EMAIL || "proofStack Contact <onboarding@resend.dev>";
 
