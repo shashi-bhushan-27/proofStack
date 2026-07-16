@@ -25,9 +25,9 @@ export default function LandingPage() {
       <main className="flex-1">
 
         {/* =============================================
-            HERO SECTION (Fits completely within viewport without scrolling)
+            HERO SECTION (Badge, Headline, Subtitle, CTA Buttons — Perfectly centered above the fold)
             ============================================= */}
-        <section className="relative overflow-hidden min-h-[calc(100vh-4.25rem)] flex flex-col justify-center py-8 sm:py-12">
+        <section className="relative overflow-hidden min-h-[calc(100vh-4.25rem)] flex flex-col justify-center">
           {/* Background decorations */}
           <div className="absolute inset-0 bg-dot-pattern opacity-30 pointer-events-none" />
           <div
@@ -35,15 +35,15 @@ export default function LandingPage() {
             style={{ background: "radial-gradient(ellipse, rgba(99,102,241,0.15), transparent 70%)" }}
           />
 
-          <div className="relative z-10 mx-auto max-w-6xl px-6 sm:px-10 lg:px-16 flex flex-col items-center text-center my-auto w-full">
+          <div className="relative z-10 mx-auto max-w-5xl px-6 sm:px-10 lg:px-16 py-12 flex flex-col items-center text-center my-auto">
             {/* Badge */}
-            <div className="inline-flex items-center gap-2 rounded-full border border-indigo-500/30 bg-indigo-500/10 px-4 py-1.5 text-xs sm:text-sm font-semibold text-indigo-300 shadow-lg shadow-indigo-500/5 mb-5 sm:mb-6">
+            <div className="inline-flex items-center gap-2 rounded-full border border-indigo-500/30 bg-indigo-500/10 px-4 py-1.5 text-xs sm:text-sm font-semibold text-indigo-300 shadow-lg shadow-indigo-500/5 mb-6 sm:mb-8">
               <Sparkles className="h-3.5 w-3.5 text-indigo-400 flex-shrink-0" />
               <span>Personal AI Resume Coach & Evidence Verification for Job Seekers</span>
             </div>
 
             {/* Headline */}
-            <h1 className="text-3xl sm:text-4xl lg:text-5xl font-extrabold tracking-tight text-white leading-tight max-w-4xl">
+            <h1 className="text-4xl sm:text-5xl lg:text-6xl font-extrabold tracking-tight text-white leading-tight max-w-4xl">
               Don&apos;t just list keywords.{" "}
               <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 via-violet-400 to-purple-400">
                 Prove real skill impact
@@ -52,7 +52,7 @@ export default function LandingPage() {
             </h1>
 
             {/* Subtitle */}
-            <p className="mt-4 max-w-2xl text-sm sm:text-base lg:text-lg text-slate-300/90 leading-relaxed">
+            <p className="mt-6 max-w-2xl text-base sm:text-lg text-slate-300/90 leading-relaxed">
               Modern ATS and hiring managers quickly reject keyword-stuffed resumes that simply list{" "}
               <code className="text-indigo-300 bg-slate-800/80 px-2 py-0.5 rounded border border-slate-700 text-xs sm:text-sm font-mono">
                 PostgreSQL
@@ -65,7 +65,7 @@ export default function LandingPage() {
             </p>
 
             {/* CTA Buttons */}
-            <div className="mt-6 sm:mt-8 flex flex-col sm:flex-row items-center justify-center gap-4 w-full sm:w-auto">
+            <div className="mt-8 sm:mt-10 flex flex-col sm:flex-row items-center justify-center gap-4 w-full sm:w-auto">
               <Link
                 href="/analysis/new"
                 className="w-full sm:w-auto inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-indigo-500 to-violet-600 px-8 py-3.5 text-sm sm:text-base font-bold text-white shadow-lg shadow-indigo-500/20 hover:shadow-indigo-500/35 hover:from-indigo-600 hover:to-violet-700 transition-all duration-200"
@@ -80,37 +80,41 @@ export default function LandingPage() {
                 <span>See How We Boost Shortlists</span>
               </Link>
             </div>
+          </div>
+        </section>
 
-            {/* Comparison Box */}
-            <div className="mt-8 sm:mt-10 w-full max-w-4xl rounded-2xl border border-slate-700/60 bg-slate-900/50 p-5 sm:p-6 shadow-2xl backdrop-blur-sm">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-5 text-left">
-                {/* Before Card */}
-                <div className="rounded-xl border border-rose-500/20 bg-rose-500/[0.04] p-4 sm:p-5 space-y-3">
-                  <div className="flex items-center gap-2.5 text-rose-400 font-bold text-xs sm:text-sm">
-                    <XCircle className="h-4 w-4 flex-shrink-0" />
-                    <span>Before: Standard Keyword-Only Resume</span>
-                  </div>
-                  <div className="p-3 rounded-lg bg-slate-950/70 border border-slate-800/60 font-mono text-xs text-slate-300 leading-relaxed">
-                    &quot;Skills: Redis, Docker, FastAPI, AWS&quot;
-                  </div>
-                  <p className="text-xs text-rose-300/90 font-medium leading-relaxed">
-                    ❌ Rejected by modern screeners — Lacks specific implementation details, clear ownership, and measurable business outcomes.
-                  </p>
+        {/* =============================================
+            COMPARISON BOX SECTION (Cleanly separated below the hero fold)
+            ============================================= */}
+        <section className="relative overflow-hidden pb-20 sm:pb-24 pt-4 sm:pt-8 px-6 sm:px-10 lg:px-16">
+          <div className="mx-auto max-w-4xl rounded-2xl border border-slate-700/60 bg-slate-900/50 p-6 sm:p-8 shadow-2xl backdrop-blur-sm">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-left">
+              {/* Before Card */}
+              <div className="rounded-xl border border-rose-500/20 bg-rose-500/[0.04] p-5 space-y-4">
+                <div className="flex items-center gap-2.5 text-rose-400 font-bold text-sm">
+                  <XCircle className="h-4 w-4 flex-shrink-0" />
+                  <span>Before: Standard Keyword-Only Resume</span>
                 </div>
+                <div className="p-3.5 rounded-lg bg-slate-950/70 border border-slate-800/60 font-mono text-xs text-slate-300 leading-relaxed">
+                  &quot;Skills: Redis, Docker, FastAPI, AWS&quot;
+                </div>
+                <p className="text-xs text-rose-300/90 font-medium leading-relaxed">
+                  ❌ Rejected by modern screeners — Lacks specific implementation details, clear ownership, and measurable business outcomes.
+                </p>
+              </div>
 
-                {/* After Card */}
-                <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/[0.04] p-4 sm:p-5 space-y-3">
-                  <div className="flex items-center gap-2.5 text-emerald-400 font-bold text-xs sm:text-sm">
-                    <CheckCircle2 className="h-4 w-4 flex-shrink-0" />
-                    <span>After: proofStack Optimized Bullet</span>
-                  </div>
-                  <div className="p-3 rounded-lg bg-slate-950/70 border border-slate-800/60 font-mono text-xs text-slate-200 leading-relaxed">
-                    &quot;Designed and deployed a high-throughput Redis caching layer for FastAPI endpoints, reducing API latency by 35%&quot;
-                  </div>
-                  <p className="text-xs text-emerald-300/90 font-medium leading-relaxed">
-                    ★ Shortlist Ready — Proves real action, engineering depth, personal ownership, and verified impact!
-                  </p>
+              {/* After Card */}
+              <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/[0.04] p-5 space-y-4">
+                <div className="flex items-center gap-2.5 text-emerald-400 font-bold text-sm">
+                  <CheckCircle2 className="h-4 w-4 flex-shrink-0" />
+                  <span>After: proofStack Optimized Bullet</span>
                 </div>
+                <div className="p-3.5 rounded-lg bg-slate-950/70 border border-slate-800/60 font-mono text-xs text-slate-200 leading-relaxed">
+                  &quot;Designed and deployed a high-throughput Redis caching layer for FastAPI endpoints, reducing API latency by 35%&quot;
+                </div>
+                <p className="text-xs text-emerald-300/90 font-medium leading-relaxed">
+                  ★ Shortlist Ready — Proves real action, engineering depth, personal ownership, and verified impact!
+                </p>
               </div>
             </div>
           </div>
