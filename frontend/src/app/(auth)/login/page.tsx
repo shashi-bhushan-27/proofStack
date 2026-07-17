@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/providers/providers";
@@ -13,6 +13,13 @@ export default function LoginPage() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      setSearchQuery(window.location.search);
+    }
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -24,7 +31,9 @@ export default function LoginPage() {
     setError(null);
     try {
       await login(email, password);
-      router.push("/dashboard");
+      const params = new URLSearchParams(window.location.search);
+      const redirectUrl = params.get("redirect") || params.get("returnUrl") || "/dashboard";
+      router.push(redirectUrl);
     } catch (err: any) {
       setError(err?.detail || "Invalid email or password");
     } finally {
@@ -37,7 +46,9 @@ export default function LoginPage() {
     setError(null);
     try {
       await loginWithProvider(provider);
-      router.push("/dashboard");
+      const params = new URLSearchParams(window.location.search);
+      const redirectUrl = params.get("redirect") || params.get("returnUrl") || "/dashboard";
+      router.push(redirectUrl);
     } catch (err: any) {
       setError(err?.detail || err?.message || `Failed to sign in with ${provider}`);
     } finally {
@@ -147,7 +158,7 @@ export default function LoginPage() {
 
         <p className="text-center text-xs text-slate-400">
           Don&apos;t have an account?{" "}
-          <Link href="/register" className="font-semibold text-indigo-400 hover:text-indigo-300">
+          <Link href={`/register${searchQuery}`} className="font-semibold text-indigo-400 hover:text-indigo-300">
             Create free account
           </Link>
         </p>

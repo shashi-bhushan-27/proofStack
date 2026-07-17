@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/providers/providers";
@@ -15,6 +15,13 @@ export default function RegisterPage() {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      setSearchQuery(window.location.search);
+    }
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -35,7 +42,9 @@ export default function RegisterPage() {
     setError(null);
     try {
       await register(fullName, email, password);
-      router.push("/dashboard");
+      const params = new URLSearchParams(window.location.search);
+      const redirectUrl = params.get("redirect") || params.get("returnUrl") || "/dashboard";
+      router.push(redirectUrl);
     } catch (err: any) {
       setError(err?.detail || "Could not create account. Email may already be registered.");
     } finally {
@@ -48,7 +57,9 @@ export default function RegisterPage() {
     setError(null);
     try {
       await loginWithProvider(provider);
-      router.push("/dashboard");
+      const params = new URLSearchParams(window.location.search);
+      const redirectUrl = params.get("redirect") || params.get("returnUrl") || "/dashboard";
+      router.push(redirectUrl);
     } catch (err: any) {
       setError(err?.detail || err?.message || `Failed to sign up with ${provider}`);
     } finally {
@@ -186,7 +197,7 @@ export default function RegisterPage() {
 
         <p className="text-center text-xs text-slate-400">
           Already have an account?{" "}
-          <Link href="/login" className="font-semibold text-indigo-400 hover:text-indigo-300">
+          <Link href={`/login${searchQuery}`} className="font-semibold text-indigo-400 hover:text-indigo-300">
             Sign In
           </Link>
         </p>

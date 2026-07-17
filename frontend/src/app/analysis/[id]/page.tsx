@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import { Header } from "@/components/layout/header";
 import { Footer } from "@/components/layout/footer";
 import { analysisApi, interrogationApi } from "@/lib/api";
@@ -32,6 +32,7 @@ import {
 
 export default function AnalysisReportPage() {
   const params = useParams();
+  const router = useRouter();
   const analysisId = params.id as string;
   const { isAuthenticated } = useAuth();
 
@@ -75,7 +76,7 @@ export default function AnalysisReportPage() {
   // Start Interrogation for selected skill
   const handleStartInterrogation = async (evidenceId: string) => {
     if (!isAuthenticated) {
-      setChatError("Please sign in or create a free account to unlock AI Interrogation interviews.");
+      router.push(`/login?redirect=${encodeURIComponent(`/analysis/${analysisId}`)}`);
       return;
     }
     setIsStartingChat(true);

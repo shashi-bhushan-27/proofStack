@@ -1,11 +1,16 @@
 "use client";
 
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { useAuth } from "@/providers/providers";
 import { ShieldCheck, LogOut, LayoutDashboard, Sparkles } from "lucide-react";
 
 export function Header() {
   const { user, isAuthenticated, isLoading, logout } = useAuth();
+  const pathname = usePathname();
+  const signInHref = pathname && pathname !== "/" && !pathname.startsWith("/login") && !pathname.startsWith("/register")
+    ? `/login?redirect=${encodeURIComponent(pathname)}`
+    : "/login";
 
   return (
     <header className="sticky top-0 z-50 w-full border-b border-slate-800/80 bg-slate-950/80 backdrop-blur-md">
@@ -71,7 +76,7 @@ export function Header() {
           ) : (
             <div className="flex items-center gap-3">
               <Link
-                href="/login"
+                href={signInHref}
                 className="rounded-lg px-3.5 py-1.5 text-sm font-medium text-slate-300 hover:text-white transition-colors"
               >
                 Sign In
