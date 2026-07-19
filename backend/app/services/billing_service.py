@@ -44,7 +44,7 @@ class CashfreeBillingService:
     ) -> dict[str, Any]:
         """Create a Cashfree order / checkout session for subscription upgrade."""
         order_id = f"sub_{uuid.uuid4().hex[:16]}"
-        amount = 10.00 if plan_id == "pro" else 1999.00
+        amount = 99.00 if plan_id == "pro" else 1999.00
 
         backend_base = settings.BACKEND_URL.rstrip("/")
         if self.env.lower() == "production" and ("localhost" in backend_base or backend_base.startswith("http://")):
