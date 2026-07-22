@@ -1,4 +1,4 @@
-import { X } from "lucide-react";
+import { X, XCircle } from "lucide-react";
 import { format } from "date-fns";
 
 interface TraceDetailProps {

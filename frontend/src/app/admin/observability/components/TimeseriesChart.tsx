@@ -68,7 +68,7 @@ export function TimeseriesChart({ data, title }: TimeseriesChartProps) {
                   color: "#f8fafc",
                 }}
                 itemStyle={{ color: "#f8fafc" }}
-                labelFormatter={(val) => format(parseISO(val), "MMM d, yyyy")}
+                labelFormatter={(val: any) => val ? format(parseISO(String(val)), "MMM d, yyyy") : ""}
               />
               <Area
                 yAxisId="left"
