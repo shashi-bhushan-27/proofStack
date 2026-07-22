@@ -169,6 +169,19 @@ async def get_current_user(
     return user
 
 
+async def get_admin_user(
+    current_user: User = Depends(get_current_user),
+) -> User:
+    """Dependency that ensures the authenticated user is an admin via allowlist."""
+    admin_emails = [e.strip() for e in settings.ADMIN_EMAILS.split(",") if e.strip()]
+    if not current_user.email or current_user.email not in admin_emails:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You do not have permission to access admin resources.",
+        )
+    return current_user
+
+
 async def get_current_user_optional(
     credentials: HTTPAuthorizationCredentials | None = Depends(_bearer_scheme_optional),
     db: AsyncSession = Depends(get_db),

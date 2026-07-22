@@ -32,20 +32,21 @@ class GeminiProvider(LLMProvider):
         # Wrap the client with instructor using TOOLS mode (highly supported by Gemini's OpenAI layer)
         self.client = instructor.from_openai(self.raw_client, mode=instructor.Mode.TOOLS)
 
-    async def generate_structured(
+    async def generate_structured_with_usage(
         self,
         system_prompt: str,
         user_prompt: str,
         response_schema: Type[T],
         temperature: float = 0.1,
-    ) -> T:
+    ) -> tuple[T, dict[str, int | None], int]:
         max_retries = 3
         backoff_delay = 2.0
 
         for attempt in range(1, max_retries + 1):
+            self._last_retry_count = attempt - 1
             try:
-                # Enforce a strict 60s timeout per call
-                response = await asyncio.wait_for(
+                # Need to use create_with_completion to get the raw response for usage stats
+                result, raw_response = await asyncio.wait_for(
                     self.client.chat.completions.create(
                         model=self.model,
                         messages=[
@@ -57,7 +58,14 @@ class GeminiProvider(LLMProvider):
                     ),
                     timeout=60.0
                 )
-                return response
+                
+                usage = {"input_tokens": None, "output_tokens": None, "total_tokens": None}
+                if hasattr(raw_response, "usage") and raw_response.usage:
+                    usage["input_tokens"] = getattr(raw_response.usage, "prompt_tokens", None)
+                    usage["output_tokens"] = getattr(raw_response.usage, "completion_tokens", None)
+                    usage["total_tokens"] = getattr(raw_response.usage, "total_tokens", None)
+                
+                return result, usage, self._last_retry_count
             except asyncio.TimeoutError:
                 logger.error(f"Gemini API call timed out on attempt {attempt}/{max_retries}")
                 if attempt == max_retries:
@@ -70,3 +78,15 @@ class GeminiProvider(LLMProvider):
                 await asyncio.sleep(backoff_delay * attempt)
 
         raise RuntimeError("Failed to generate structured output from LLM.")
+
+    async def generate_structured(
+        self,
+        system_prompt: str,
+        user_prompt: str,
+        response_schema: Type[T],
+        temperature: float = 0.1,
+    ) -> T:
+        result, _, _ = await self.generate_structured_with_usage(
+            system_prompt, user_prompt, response_schema, temperature
+        )
+        return result

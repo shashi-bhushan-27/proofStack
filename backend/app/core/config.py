@@ -61,10 +61,12 @@ class Settings(BaseSettings):
     AWS_SECRET_ACCESS_KEY: str = ""
     S3_ENDPOINT_URL: str | None = None
 
-    # ── File Handling ────────────────────────────────────────────────────
     MAX_FILE_SIZE_MB: int = 10
     UPLOAD_DIR: str = "uploads"
     STORAGE_BACKEND: str = "local"  # "local" or "s3"
+
+    # ── Admin & Observability ────────────────────────────────────────────
+    ADMIN_EMAILS: str = ""
 
     # ── Scoring Weights (must sum to 1.0) ────────────────────────────────
     required_skill_coverage_weight: float = 0.35

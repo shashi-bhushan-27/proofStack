@@ -2,7 +2,7 @@
 
 from fastapi import APIRouter
 
-from app.api.v1 import auth, resumes, job_descriptions, analyses, interrogation, billing
+from app.api.v1 import auth, resumes, job_descriptions, analyses, interrogation, billing, admin
 
 router = APIRouter()
 
@@ -12,4 +12,5 @@ router.include_router(job_descriptions.router, prefix="/job-descriptions", tags=
 router.include_router(analyses.router, prefix="/analyses", tags=["Analyses"])
 router.include_router(interrogation.router, tags=["Interrogation"])
 router.include_router(billing.router, tags=["Billing"])
+router.include_router(admin.router, prefix="/admin", tags=["Admin"])
 

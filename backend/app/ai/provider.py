@@ -28,3 +28,20 @@ class LLMProvider(ABC):
             An instance of response_schema with populated fields.
         """
         pass
+
+    @abstractmethod
+    async def generate_structured_with_usage(
+        self,
+        system_prompt: str,
+        user_prompt: str,
+        response_schema: Type[T],
+        temperature: float = 0.1,
+    ) -> tuple[T, dict[str, int | None], int]:
+        """
+        Generate a structured response and return token usage and retry count.
+        
+        Returns:
+            Tuple of (response_schema instance, usage_dict, retry_count)
+            usage_dict contains 'input_tokens', 'output_tokens', 'total_tokens'
+        """
+        pass

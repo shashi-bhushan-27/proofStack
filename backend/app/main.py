@@ -8,7 +8,7 @@ from app.db.session import engine
 from app.db.base import Base
 
 # Import ALL models so Base.metadata knows about every table
-from app.models import user, resume, job_description, analysis, job_requirement, resume_skill, skill_evidence, recommendation, interrogation  # noqa: F401
+from app.models import user, resume, job_description, analysis, job_requirement, resume_skill, skill_evidence, recommendation, interrogation, llm_trace  # noqa: F401
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("proofStack")

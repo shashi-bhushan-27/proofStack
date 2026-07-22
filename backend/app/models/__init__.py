@@ -9,6 +9,7 @@ from app.models.resume_skill import ResumeSkill
 from app.models.skill_evidence import SkillEvidence, EvidenceLevel
 from app.models.recommendation import Recommendation, RecommendationPriority
 from app.models.interrogation import InterrogationSession, InterrogationMessage, InterrogationStatus, MessageRole
+from app.models.llm_trace import LlmTrace
 
 __all__ = [
     "User",
@@ -28,4 +29,5 @@ __all__ = [
     "InterrogationMessage",
     "InterrogationStatus",
     "MessageRole",
+    "LlmTrace",
 ]

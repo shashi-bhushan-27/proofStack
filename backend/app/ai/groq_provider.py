@@ -28,13 +28,13 @@ class GroqProvider(LLMProvider):
         self.raw_client = AsyncGroq(api_key=self.api_key)
         self.client = instructor.from_groq(self.raw_client, mode=instructor.Mode.MD_JSON)
 
-    async def generate_structured(
+    async def generate_structured_with_usage(
         self,
         system_prompt: str,
         user_prompt: str,
         response_schema: Type[T],
         temperature: float = 0.1,
-    ) -> T:
+    ) -> tuple[T, dict[str, int | None], int]:
         max_retries = 3
         backoff_delay = 2.0
 
@@ -44,9 +44,10 @@ class GroqProvider(LLMProvider):
         logger.info(f"Dynamic token budget: estimated_input={estimated_input_tokens}, max_tokens={dynamic_max_tokens}")
 
         for attempt in range(1, max_retries + 1):
+            self._last_retry_count = attempt - 1
             try:
                 # We use asyncio.wait_for to enforce a strict 60s timeout per call
-                response = await asyncio.wait_for(
+                result, raw_response = await asyncio.wait_for(
                     self.client.chat.completions.create(
                         model=self.model,
                         messages=[
@@ -60,7 +61,14 @@ class GroqProvider(LLMProvider):
                     ),
                     timeout=60.0
                 )
-                return response
+                
+                usage = {"input_tokens": None, "output_tokens": None, "total_tokens": None}
+                if hasattr(raw_response, "usage") and raw_response.usage:
+                    usage["input_tokens"] = getattr(raw_response.usage, "prompt_tokens", None)
+                    usage["output_tokens"] = getattr(raw_response.usage, "completion_tokens", None)
+                    usage["total_tokens"] = getattr(raw_response.usage, "total_tokens", None)
+                
+                return result, usage, self._last_retry_count
             except asyncio.TimeoutError:
                 logger.error(f"Groq API call timed out on attempt {attempt}/{max_retries}")
                 if attempt == max_retries:
@@ -79,19 +87,34 @@ class GroqProvider(LLMProvider):
 
         raise RuntimeError("Failed to generate structured output from LLM.")
 
+    async def generate_structured(
+        self,
+        system_prompt: str,
+        user_prompt: str,
+        response_schema: Type[T],
+        temperature: float = 0.1,
+    ) -> T:
+        result, _, _ = await self.generate_structured_with_usage(
+            system_prompt, user_prompt, response_schema, temperature
+        )
+        return result
+
 # Global singleton or factory
 _provider_instance: LLMProvider | None = None
 
 def get_provider() -> LLMProvider:
-    """Factory function to get the configured LLM provider instance."""
+    """Factory function to get the configured LLM provider instance wrapped with observability."""
     global _provider_instance
     if _provider_instance is None:
+        from app.observability.wrapper import ObservableProvider
         if settings.LLM_PROVIDER.lower() == "gemini":
             from app.ai.gemini_provider import GeminiProvider
-            _provider_instance = GeminiProvider()
+            base_provider = GeminiProvider()
         elif settings.LLM_PROVIDER.lower() == "groq":
-            _provider_instance = GroqProvider()
+            base_provider = GroqProvider()
         else:
             # Default to Groq if specified provider is unknown or default
-            _provider_instance = GroqProvider()
+            base_provider = GroqProvider()
+            
+        _provider_instance = ObservableProvider(base_provider)
     return _provider_instance

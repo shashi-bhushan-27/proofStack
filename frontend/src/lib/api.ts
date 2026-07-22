@@ -179,5 +179,25 @@ export const billingApi = {
   cancel: () => api.post("/billing/cancel"),
 };
 
+// ==========================================
+// Admin API
+// ==========================================
+export const adminApi = {
+  getObservabilitySummary: () => api.get("/admin/observability/summary"),
+  getObservabilityTimeseries: (days: number = 30) => api.get(`/admin/observability/timeseries?days=${days}`),
+  getObservabilityByOperation: () => api.get("/admin/observability/by-operation"),
+  getObservabilityByModel: () => api.get("/admin/observability/by-model"),
+  getObservabilityByError: () => api.get("/admin/observability/by-error"),
+  getObservabilityByPromptVersion: () => api.get("/admin/observability/by-prompt-version"),
+  getTraces: (page: number = 1, pageSize: number = 50, operation?: string, model?: string, status?: string) => {
+    const params = new URLSearchParams({ page: page.toString(), page_size: pageSize.toString() });
+    if (operation) params.append("operation", operation);
+    if (model) params.append("model", model);
+    if (status) params.append("status", status);
+    return api.get(`/admin/observability/traces?${params.toString()}`);
+  },
+  getTraceDetail: (traceId: string) => api.get(`/admin/observability/traces/${traceId}`),
+};
+
 export default api;
 

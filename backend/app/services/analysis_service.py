@@ -15,6 +15,7 @@ from app.models.resume import Resume
 from app.models.resume_skill import ResumeSkill
 from app.models.skill_evidence import SkillEvidence
 from app.scoring.engine import ScoringEngine
+from app.observability.context import obs_analysis_id, obs_user_id
 
 logger = logging.getLogger(__name__)
 
@@ -37,6 +38,9 @@ async def run_analysis(analysis_id: UUID, db: AsyncSession | None = None):
         if not analysis:
             logger.error(f"Analysis record {analysis_id} not found.")
             return
+
+        obs_analysis_id.set(analysis.id)
+        obs_user_id.set(analysis.user_id)
 
         resume_stmt = select(Resume).where(Resume.id == analysis.resume_id)
         resume_result = await db.execute(resume_stmt)

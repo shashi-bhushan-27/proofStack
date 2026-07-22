@@ -11,6 +11,7 @@ from app.models.interrogation import InterrogationSession, InterrogationMessage,
 from app.models.skill_evidence import SkillEvidence
 from app.models.user import User
 from app.schemas.interrogation import InterrogationSessionResponse, GeneratedBulletResponse
+from app.observability.context import obs_analysis_id, obs_user_id
 
 logger = logging.getLogger(__name__)
 
@@ -42,6 +43,10 @@ async def start_interrogation(
     
     if not evidence:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Skill evidence not found for this analysis")
+
+    obs_analysis_id.set(analysis_id)
+    if user:
+        obs_user_id.set(user.id)
 
     # Check if active session exists
     session_stmt = select(InterrogationSession).where(
@@ -105,6 +110,10 @@ async def process_message(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Interrogation session not found")
     if session.status != InterrogationStatus.ACTIVE:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Interrogation session is no longer active")
+
+    obs_analysis_id.set(session.analysis_id)
+    if user:
+        obs_user_id.set(user.id)
 
     user_msg = InterrogationMessage(
         session_id=session.id,
@@ -171,6 +180,10 @@ async def generate_bullet_from_session(
     
     if not session:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Interrogation session not found")
+
+    obs_analysis_id.set(session.analysis_id)
+    if user:
+        obs_user_id.set(user.id)
 
     msg_stmt = select(InterrogationMessage).where(InterrogationMessage.session_id == session.id).order_by(InterrogationMessage.created_at)
     msg_res = await db.execute(msg_stmt)
