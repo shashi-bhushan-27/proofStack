@@ -3,6 +3,7 @@ import { Inter } from "next/font/google";
 import "./globals.css";
 import { Providers } from "@/providers/providers";
 import { Analytics } from "@vercel/analytics/react";
+import { SpeedInsights } from "@vercel/speed-insights/next";
 import { GoogleAnalytics } from "@next/third-parties/google";
 
 const inter = Inter({
@@ -28,6 +29,7 @@ export default function RootLayout({
       <body className="min-h-full flex flex-col bg-[#020617] text-[#f8fafc] font-sans">
         <Providers>{children}</Providers>
         <Analytics />
+        <SpeedInsights />
         <GoogleAnalytics gaId={gaId} />
       </body>
     </html>
