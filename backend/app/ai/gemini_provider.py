@@ -47,7 +47,7 @@ class GeminiProvider(LLMProvider):
             try:
                 # Need to use create_with_completion to get the raw response for usage stats
                 result, raw_response = await asyncio.wait_for(
-                    self.client.chat.completions.create(
+                    self.client.chat.completions.create_with_completion(
                         model=self.model,
                         messages=[
                             {"role": "system", "content": system_prompt},

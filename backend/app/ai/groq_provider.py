@@ -48,7 +48,7 @@ class GroqProvider(LLMProvider):
             try:
                 # We use asyncio.wait_for to enforce a strict 60s timeout per call
                 result, raw_response = await asyncio.wait_for(
-                    self.client.chat.completions.create(
+                    self.client.chat.completions.create_with_completion(
                         model=self.model,
                         messages=[
                             {"role": "system", "content": system_prompt},
