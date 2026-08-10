@@ -23,6 +23,7 @@ class AnalysisResponse(BaseModel):
 
     id: uuid.UUID
     user_id: uuid.UUID | None
+    job_title: str | None = None
     resume_id: uuid.UUID
     job_description_id: uuid.UUID
     status: AnalysisStatus

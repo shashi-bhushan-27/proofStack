@@ -155,15 +155,24 @@ async def list_analyses(
 ) -> AnalysisListResponse:
     """List all analyses belonging to the authenticated user."""
     response.headers["Cache-Control"] = "private, max-age=60, must-revalidate"
+    # Join JobDescription to get job_title without loading full text
     result = await db.execute(
-        select(Analysis)
+        select(Analysis, JobDescription.job_title)
+        .join(JobDescription, Analysis.job_description_id == JobDescription.id)
         .where(Analysis.user_id == current_user.id)
         .order_by(Analysis.created_at.desc())
     )
-    analyses = result.scalars().all()
+    rows = result.all()
+    
+    items = []
+    for analysis, job_title in rows:
+        resp = AnalysisResponse.model_validate(analysis)
+        resp.job_title = job_title
+        items.append(resp)
+        
     return AnalysisListResponse(
-        items=[AnalysisResponse.model_validate(a) for a in analyses],
-        total=len(analyses),
+        items=items,
+        total=len(items),
     )
 
 

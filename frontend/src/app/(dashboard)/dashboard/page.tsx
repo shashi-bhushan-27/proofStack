@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Header } from "@/components/layout/header";
-import { Footer } from "@/components/layout/footer";
+
 import { analysisApi } from "@/lib/api";
 import { useAuth } from "@/providers/providers";
 import { getScoreColor, getScoreVerdict, formatDate } from "@/lib/utils";
@@ -17,6 +17,7 @@ import {
   PlusCircle,
   TrendingUp,
 } from "lucide-react";
+import styles from './page.module.css';
 
 export default function DashboardPage() {
   const router = useRouter();
@@ -59,108 +60,109 @@ export default function DashboardPage() {
 
   if (isAuthLoading || isLoading) {
     return (
-      <div className="flex min-h-screen flex-col bg-[#020617] text-white">
+      <div className={styles.container}>
         <Header />
-        <div className="flex flex-1 items-center justify-center">
-          <Loader2 className="h-10 w-10 animate-spin text-indigo-400" />
+        <div className={styles.loadingContainer}>
+          <Loader2 className={styles.spinner} />
         </div>
-        <Footer />
+
       </div>
     );
   }
 
   return (
-    <div className="flex min-h-screen flex-col bg-[#020617] text-white">
+    <div className={styles.container}>
       <Header />
 
-      <main className="flex-1 py-10 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto w-full space-y-8">
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-slate-800 pb-6">
+      <main className={styles.main}>
+        <div className={styles.header}>
           <div>
-            <h1 className="text-2xl font-bold tracking-tight text-white sm:text-3xl">
+            <h1 className={styles.title}>
               Evaluation Dashboard
             </h1>
-            <p className="mt-1 text-sm text-slate-400">
+            <p className={styles.subtitle}>
               Track your candidate fit scores across applications and review past AI interrogations.
             </p>
           </div>
 
           <Link
             href="/analysis/new"
-            className="flex items-center gap-2 rounded-xl bg-gradient-to-r from-indigo-500 to-violet-600 px-5 py-2.5 text-sm font-bold text-white shadow-lg shadow-indigo-500/25 hover:from-indigo-600 hover:to-violet-700 transition-all"
+            className={styles.newButton}
           >
-            <PlusCircle className="h-4 w-4" /> New Evaluation
+            <PlusCircle className={styles.iconSmall} /> New Evaluation
           </Link>
         </div>
 
         {error && (
-          <div className="rounded-xl bg-rose-500/10 border border-rose-500/30 p-4 text-sm text-rose-300">
+          <div className={styles.errorBox}>
             {error}
           </div>
         )}
 
         {analyses.length === 0 ? (
-          <div className="rounded-2xl border border-slate-800 bg-slate-900/40 p-12 text-center max-w-lg mx-auto my-12">
-            <TrendingUp className="h-12 w-12 text-indigo-400 mx-auto mb-4 opacity-75" />
-            <h3 className="text-lg font-bold text-white">No evaluation reports yet</h3>
-            <p className="mt-2 text-xs text-slate-400 leading-relaxed">
+          <div className={styles.emptyState}>
+            <TrendingUp className={styles.emptyIcon} />
+            <h3 className={styles.emptyTitle}>No evaluation reports yet</h3>
+            <p className={styles.emptyDesc}>
               Run your first evidence evaluation against any target job description to verify your skill depth and unlock AI recommendations.
             </p>
-            <div className="mt-6">
+            <div className={styles.emptyAction}>
               <Link
                 href="/analysis/new"
-                className="inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-6 py-3 text-xs font-bold text-white hover:bg-indigo-500 transition-colors shadow-lg shadow-indigo-500/20"
+                className={styles.startButton}
               >
-                <Sparkles className="h-4 w-4" /> Start First Analysis
+                <Sparkles className={styles.iconSmall} /> Start First Analysis
               </Link>
             </div>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className={styles.grid}>
             {analyses.map((item) => (
               <div
                 key={item.id}
                 onClick={() => router.push(`/analysis/${item.id}`)}
-                className="group rounded-2xl border border-slate-800 bg-slate-900/50 p-6 transition-all hover:border-slate-700 hover:bg-slate-900/80 cursor-pointer flex flex-col justify-between shadow-lg"
+                className={styles.card}
               >
                 <div>
-                  <div className="flex items-center justify-between mb-4">
-                    <span className="text-xs text-slate-500 font-medium">
+                  <div className={styles.cardHeader}>
+                    <span className={styles.cardDate}>
                       {formatDate(item.created_at)}
                     </span>
                     <button
                       onClick={(e) => handleDelete(item.id, e)}
-                      className="p-1.5 rounded-lg text-slate-500 hover:text-rose-400 hover:bg-rose-500/10 transition-colors"
+                      className={styles.deleteButton}
                       title="Delete Report"
                     >
-                      <Trash2 className="h-4 w-4" />
+                      <Trash2 className={styles.iconSmall} />
                     </button>
                   </div>
 
-                  <div className="flex items-center gap-2 mb-2">
-                    <FileText className="h-5 w-5 text-indigo-400 flex-shrink-0" />
-                    <h3 className="text-base font-bold text-white line-clamp-1">
-                      Target Role Evaluation
+                  <div className={styles.cardTitleWrapper}>
+                    <FileText className={styles.cardIcon} />
+                    <h3 className={styles.cardTitle}>
+                      {item.job_title || "Target Role Evaluation"}
                     </h3>
                   </div>
 
-                  <p className="text-xs text-slate-400 mb-6 line-clamp-2">
+                  <p className={styles.cardVerdict}>
                     {getScoreVerdict(item.overall_score || 0)}
                   </p>
                 </div>
 
-                <div className="flex items-center justify-between pt-4 border-t border-slate-800/80">
+                <div className={styles.cardFooter}>
                   <div>
-                    <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 block">
+                    <span className={styles.scoreLabel}>
                       Fit Score
                     </span>
-                    <span className={`text-2xl font-black ${getScoreColor(item.overall_score || 0)}`}>
+                    {/* Retaining getScoreColor which returns utility classes but combining it nicely is hard. Wait, the instructions say "remove ALL Tailwind className strings" */}
+                    <span className={`${styles.scoreValue} ${getScoreColor(item.overall_score || 0)}`}>
                       {item.overall_score || 0}
-                      <span className="text-xs text-slate-500 font-normal">/100</span>
+                      <span className={styles.scoreMax}>/100</span>
                     </span>
                   </div>
 
-                  <div className="flex items-center gap-1 text-xs font-semibold text-indigo-400 group-hover:text-indigo-300 transition-colors">
-                    View Report <ArrowRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-1" />
+                  <div className={styles.viewReport}>
+                    View Report <ArrowRight className={styles.arrowIcon} />
                   </div>
                 </div>
               </div>
@@ -169,7 +171,7 @@ export default function DashboardPage() {
         )}
       </main>
 
-      <Footer />
+
     </div>
   );
 }
