@@ -1,133 +1,127 @@
-import { X, XCircle } from "lucide-react";
+"use client";
+
+import { XCircle } from "lucide-react";
 import { format } from "date-fns";
+import { Badge } from "@/components/ui/badge";
+import { Dialog } from "@/components/ui/dialog";
+import type { TraceSummary } from "./TraceTable";
+
+export interface TraceDetailData extends TraceSummary {
+  total_tokens: number | null;
+  retry_count: number;
+  prompt_version: string;
+  provider: string;
+  analysis_id: string | null;
+  user_id: string | null;
+  error_type: string | null;
+  error_message: string | null;
+}
 
 interface TraceDetailProps {
-  trace: any | null;
+  trace: TraceDetailData | null;
   onClose: () => void;
+}
+
+function Stat({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div>
+      <p className="text-xs text-fg-subtle">{label}</p>
+      <p className="mt-1 text-sm text-fg">{children}</p>
+    </div>
+  );
+}
+
+function Row({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div className="flex justify-between gap-4 py-2">
+      <span className="text-fg-muted">{label}</span>
+      <span className="font-mono tabular-nums text-fg">{children}</span>
+    </div>
+  );
 }
 
 export function TraceDetail({ trace, onClose }: TraceDetailProps) {
   if (!trace) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 sm:p-6">
-      <div className="bg-[#0f172a] border border-slate-700 w-full max-w-3xl rounded-2xl shadow-2xl flex flex-col max-h-[90vh]">
-        
-        {/* Header */}
-        <div className="flex items-center justify-between p-6 border-b border-slate-800">
+    <Dialog
+      open
+      onClose={onClose}
+      size="lg"
+      title="Trace detail"
+      titleAddon={
+        <Badge tone={trace.status === "success" ? "success" : "danger"} size="sm" className="uppercase">
+          {trace.status}
+        </Badge>
+      }
+      description={<span className="break-all font-mono text-xs">{trace.trace_id}</span>}
+    >
+      <div className="space-y-6">
+        <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+          <Stat label="Timestamp">{format(new Date(trace.created_at), "MMM d, yyyy HH:mm:ss")}</Stat>
+          <Stat label="Operation">
+            <span className="font-medium text-primary-text">{trace.operation}</span>
+          </Stat>
+          <Stat label="Model">{trace.model}</Stat>
+          <Stat label="Latency">{trace.latency_ms}ms</Stat>
+        </div>
+
+        <div className="grid gap-6 border-t border-border pt-6 sm:grid-cols-2">
           <div>
-            <h2 className="text-lg font-bold text-white flex items-center gap-3">
-              Trace Detail
-              <span className={`text-xs px-2.5 py-0.5 rounded-full font-bold ${
-                trace.status === "success" ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30" : "bg-rose-500/20 text-rose-400 border border-rose-500/30"
-              }`}>
-                {trace.status.toUpperCase()}
-              </span>
-            </h2>
-            <p className="text-xs text-slate-400 mt-1 font-mono">{trace.trace_id}</p>
+            <h3 className="text-sm font-semibold text-fg">Tokens</h3>
+            <div className="mt-2 divide-y divide-border text-sm">
+              <Row label="Input">{trace.input_tokens || 0}</Row>
+              <Row label="Output">{trace.output_tokens || 0}</Row>
+              <div className="flex justify-between gap-4 py-2 font-semibold text-fg">
+                <span>Total</span>
+                <span className="font-mono tabular-nums">{trace.total_tokens || 0}</span>
+              </div>
+            </div>
           </div>
-          <button
-            onClick={onClose}
-            className="p-2 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-colors"
-          >
-            <X className="h-5 w-5" />
-          </button>
+          <div>
+            <h3 className="text-sm font-semibold text-fg">Economics</h3>
+            <div className="mt-2 divide-y divide-border text-sm">
+              <Row label="Estimated cost">
+                <span className="text-success">${trace.estimated_cost_usd.toFixed(6)}</span>
+              </Row>
+              <Row label="Retries">{trace.retry_count}</Row>
+            </div>
+          </div>
         </div>
 
-        {/* Content */}
-        <div className="p-6 overflow-y-auto space-y-8">
-          
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-            <div>
-              <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-1">Timestamp</p>
-              <p className="text-sm text-slate-300">{format(new Date(trace.created_at), "MMM d, yyyy HH:mm:ss")}</p>
-            </div>
-            <div>
-              <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-1">Operation</p>
-              <p className="text-sm font-medium text-indigo-400">{trace.operation}</p>
-            </div>
-            <div>
-              <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-1">Model</p>
-              <p className="text-sm text-slate-300">{trace.model}</p>
-            </div>
-            <div>
-              <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-1">Latency</p>
-              <p className="text-sm text-slate-300">{trace.latency_ms}ms</p>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-2 gap-4 border-t border-slate-800 pt-6">
-            <div>
-              <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-3">Tokens</p>
-              <div className="space-y-2 text-sm text-slate-300">
-                <div className="flex justify-between border-b border-slate-800/50 pb-1">
-                  <span className="text-slate-400">Input</span>
-                  <span className="font-mono">{trace.input_tokens || 0}</span>
-                </div>
-                <div className="flex justify-between border-b border-slate-800/50 pb-1">
-                  <span className="text-slate-400">Output</span>
-                  <span className="font-mono">{trace.output_tokens || 0}</span>
-                </div>
-                <div className="flex justify-between font-bold text-white pt-1">
-                  <span>Total</span>
-                  <span className="font-mono">{trace.total_tokens || 0}</span>
-                </div>
+        <div className="border-t border-border pt-6">
+          <h3 className="text-sm font-semibold text-fg">Context</h3>
+          <dl className="mt-3 grid gap-3 sm:grid-cols-2">
+            {[
+              { label: "Prompt version", value: trace.prompt_version, mono: true },
+              { label: "Provider", value: trace.provider },
+              { label: "Analysis ID", value: trace.analysis_id || "N/A", mono: true },
+              { label: "User ID", value: trace.user_id || "N/A", mono: true },
+            ].map((item) => (
+              <div key={item.label} className="rounded-lg border border-border bg-surface-2/60 px-3 py-2.5">
+                <dt className="text-xs text-fg-subtle">{item.label}</dt>
+                <dd className={item.mono ? "mt-1 break-all font-mono text-xs text-fg" : "mt-1 text-sm text-fg"}>
+                  {item.value}
+                </dd>
               </div>
-            </div>
-            
-            <div>
-              <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-3">Economics</p>
-              <div className="space-y-2 text-sm text-slate-300">
-                <div className="flex justify-between border-b border-slate-800/50 pb-1">
-                  <span className="text-slate-400">Estimated Cost</span>
-                  <span className="font-mono text-emerald-400">${trace.estimated_cost_usd.toFixed(6)}</span>
-                </div>
-                <div className="flex justify-between pt-1">
-                  <span className="text-slate-400">Retries</span>
-                  <span>{trace.retry_count}</span>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div className="border-t border-slate-800 pt-6">
-            <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-3">Context</p>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div className="bg-slate-900/50 p-3 rounded-lg border border-slate-800">
-                <span className="text-xs text-slate-500 block mb-1">Prompt Version</span>
-                <span className="text-sm font-mono text-indigo-300">{trace.prompt_version}</span>
-              </div>
-              <div className="bg-slate-900/50 p-3 rounded-lg border border-slate-800">
-                <span className="text-xs text-slate-500 block mb-1">Provider</span>
-                <span className="text-sm text-slate-300">{trace.provider}</span>
-              </div>
-              <div className="bg-slate-900/50 p-3 rounded-lg border border-slate-800">
-                <span className="text-xs text-slate-500 block mb-1">Analysis ID</span>
-                <span className="text-sm font-mono text-slate-400">{trace.analysis_id || "N/A"}</span>
-              </div>
-              <div className="bg-slate-900/50 p-3 rounded-lg border border-slate-800">
-                <span className="text-xs text-slate-500 block mb-1">User ID</span>
-                <span className="text-sm font-mono text-slate-400">{trace.user_id || "N/A"}</span>
-              </div>
-            </div>
-          </div>
-
-          {trace.status === "failure" && (
-            <div className="border-t border-rose-900/50 pt-6">
-              <p className="text-[10px] font-bold uppercase tracking-wider text-rose-500 mb-3 flex items-center gap-2">
-                <XCircle className="h-4 w-4" /> Error Details
-              </p>
-              <div className="bg-rose-500/10 p-4 rounded-xl border border-rose-500/20">
-                <p className="text-sm font-bold text-rose-400 mb-2">Type: {trace.error_type || "unknown"}</p>
-                <div className="text-xs text-rose-300 font-mono whitespace-pre-wrap max-h-40 overflow-y-auto bg-black/20 p-3 rounded-lg">
-                  {trace.error_message || "No error message recorded."}
-                </div>
-              </div>
-            </div>
-          )}
-
+            ))}
+          </dl>
         </div>
+
+        {trace.status === "failure" && (
+          <div className="border-t border-border pt-6">
+            <h3 className="flex items-center gap-2 text-sm font-semibold text-danger">
+              <XCircle className="size-4" aria-hidden="true" /> Error details
+            </h3>
+            <div className="mt-3 rounded-lg border border-danger-border bg-danger-soft p-4">
+              <p className="text-sm font-medium text-fg">Type: {trace.error_type || "unknown"}</p>
+              <pre className="mt-2 max-h-40 overflow-y-auto whitespace-pre-wrap rounded-md bg-surface p-3 font-mono text-xs text-fg-muted">
+                {trace.error_message || "No error message recorded."}
+              </pre>
+            </div>
+          </div>
+        )}
       </div>
-    </div>
+    </Dialog>
   );
 }

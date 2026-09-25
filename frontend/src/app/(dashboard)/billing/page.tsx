@@ -1,10 +1,19 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { Check, Lock, RefreshCw, ShieldCheck, Zap } from "lucide-react";
 import { useAuth } from "@/providers/providers";
 import { billingApi } from "@/lib/api";
-import { Check, Sparkles, ShieldCheck, Zap, AlertCircle, Loader2 } from "lucide-react";
+import { cn, getErrorMessage } from "@/lib/utils";
+import { Container, PageHeader, PageShell } from "@/components/layout/page";
+import { Alert } from "@/components/ui/alert";
+import { Badge } from "@/components/ui/badge";
+import { Button, buttonVariants } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import { ConfirmDialog } from "@/components/ui/dialog";
+import { Progress, Skeleton } from "@/components/ui/feedback";
 
 declare global {
   interface Window {
@@ -32,8 +41,11 @@ export default function BillingPage() {
   const router = useRouter();
   const [plans, setPlans] = useState<Plan[]>([]);
   const [loadingPlans, setLoadingPlans] = useState(true);
+  const [plansError, setPlansError] = useState(false);
+  const [plansReloadKey, setPlansReloadKey] = useState(0);
   const [checkoutLoading, setCheckoutLoading] = useState(false);
   const [cancelLoading, setCancelLoading] = useState(false);
+  const [confirmCancelOpen, setConfirmCancelOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   // Load Cashfree SDK v3 Script
@@ -53,14 +65,21 @@ export default function BillingPage() {
       try {
         const response = await billingApi.getPlans();
         setPlans(response.data.plans || []);
+        setPlansError(false);
       } catch (err) {
         console.error("Failed to load plans:", err);
+        setPlansError(true);
       } finally {
         setLoadingPlans(false);
       }
     };
     fetchPlans();
-  }, []);
+  }, [plansReloadKey]);
+
+  const retryPlans = () => {
+    setLoadingPlans(true);
+    setPlansReloadKey((key) => key + 1);
+  };
 
   const handleUpgrade = async (planId: string) => {
     if (!user) {
@@ -78,7 +97,7 @@ export default function BillingPage() {
         return_url: returnUrl,
       });
 
-      const { payment_session_id, order_id } = response.data;
+      const { payment_session_id } = response.data;
 
       if (!payment_session_id) {
         setError("Could not create payment session. Please try again.");
@@ -100,11 +119,10 @@ export default function BillingPage() {
         paymentSessionId: payment_session_id,
         redirectTarget: "_self",
       });
-    } catch (err: any) {
+    } catch (err) {
       console.error("Checkout failed:", err);
       setError(
-        err?.response?.data?.detail ||
-          "Failed to initiate Cashfree checkout. Please check your network or try again."
+        getErrorMessage(err, "Failed to initiate Cashfree checkout. Please check your network or try again.")
       );
     } finally {
       setCheckoutLoading(false);
@@ -112,203 +130,219 @@ export default function BillingPage() {
   };
 
   const handleCancel = async () => {
-    if (!confirm("Are you sure you want to cancel your Pro subscription? You will return to the Free tier (3 analyses/day).")) {
-      return;
-    }
-
     setCancelLoading(true);
     setError(null);
 
     try {
       await billingApi.cancel();
       window.location.reload();
-    } catch (err: any) {
+    } catch (err) {
       console.error("Cancellation failed:", err);
-      setError(err?.response?.data?.detail || "Could not cancel subscription.");
+      setError(getErrorMessage(err, "Could not cancel subscription."));
+      setConfirmCancelOpen(false);
     } finally {
       setCancelLoading(false);
     }
   };
 
-  if (authLoading || loadingPlans) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-slate-950 text-white">
-        <Loader2 className="w-8 h-8 animate-spin text-cyan-400" />
-      </div>
-    );
-  }
-
   const isPro = user?.subscription_tier === "pro";
   const dailyUsed = user?.daily_analyses_count || 0;
-  const dailyLimit = isPro ? "Unlimited" : 3;
+  const isLoading = authLoading || loadingPlans;
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-slate-950 via-slate-900 to-slate-950 text-slate-100 py-12 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-6xl mx-auto space-y-12">
-        {/* Header */}
-        <div className="text-center space-y-4">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-cyan-500/10 border border-cyan-500/20 text-cyan-400 text-sm font-medium">
-            <Sparkles className="w-4 h-4" />
-            <span>Billing & Subscriptions</span>
-          </div>
-          <h1 className="text-4xl font-extrabold tracking-tight sm:text-5xl bg-gradient-to-r from-white via-slate-200 to-slate-400 bg-clip-text text-transparent">
-            Choose Your Intelligence Tier
-          </h1>
-          <p className="max-w-2xl mx-auto text-lg text-slate-400">
-            Scale your AI resume analysis from targeted daily checks to unlimited, deep multi-dimensional evidence evaluations.
-          </p>
-        </div>
+    <PageShell>
+      <Container className="py-10 sm:py-14">
+        <PageHeader
+          title="Plans & billing"
+          description="Scale your AI resume analysis from targeted daily checks to unlimited, deep multi-dimensional evidence evaluations."
+        />
 
-        {/* Current Plan & Usage Status Bar */}
-        <div className="bg-slate-900/80 backdrop-blur border border-slate-800 rounded-2xl p-6 sm:p-8 shadow-xl flex flex-col md:flex-row items-center justify-between gap-6">
-          <div className="space-y-2">
-            <div className="flex items-center gap-3">
-              <span className="text-sm uppercase tracking-wider text-slate-400 font-semibold">
-                Current Plan
-              </span>
-              <span className={`px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wide ${
-                isPro
-                  ? "bg-gradient-to-r from-cyan-500 to-blue-600 text-white shadow-lg shadow-cyan-500/25"
-                  : "bg-slate-800 text-slate-300 border border-slate-700"
-              }`}>
-                {isPro ? "Pro Intelligence ⚡" : "Free Starter"}
-              </span>
-            </div>
-            <p className="text-slate-300 text-sm">
-              {isPro
-                ? "You have full access to unlimited AI analyses, deep scoring breakdowns, and priority queues."
-                : "You are currently on the Free Starter tier with daily usage limits."}
-            </p>
-          </div>
-
-          <div className="w-full md:w-80 bg-slate-950/80 border border-slate-800/80 rounded-xl p-4 space-y-2">
-            <div className="flex justify-between text-xs font-semibold text-slate-300">
-              <span>Today&apos;s Usage</span>
-              <span className={isPro ? "text-cyan-400 font-bold" : dailyUsed >= 3 ? "text-red-400 font-bold" : "text-slate-200"}>
-                {dailyUsed} / {dailyLimit} Analyses
-              </span>
-            </div>
-            <div className="w-full h-2.5 bg-slate-800 rounded-full overflow-hidden">
-              <div
-                className={`h-full transition-all duration-500 rounded-full ${
-                  isPro ? "bg-cyan-400 w-full" : dailyUsed >= 3 ? "bg-red-500" : "bg-blue-500"
-                }`}
-                style={{ width: isPro ? "100%" : `${Math.min((dailyUsed / 3) * 100, 100)}%` }}
-              />
-            </div>
-            {!isPro && (
-              <p className="text-[11px] text-slate-500">
-                Resets daily at midnight UTC. Upgrade for unlimited evaluations.
-              </p>
-            )}
-          </div>
-        </div>
-
-        {error && (
-          <div className="bg-red-950/50 border border-red-500/30 rounded-xl p-4 flex items-center gap-3 text-red-300 text-sm">
-            <AlertCircle className="w-5 h-5 flex-shrink-0 text-red-400" />
-            <span>{error}</span>
-          </div>
-        )}
-
-        {/* Pricing Cards Grid */}
-        <div className="grid md:grid-cols-2 gap-8 max-w-5xl mx-auto">
-          {plans.map((plan) => {
-            const isCurrentPlan = (plan.id === "pro" && isPro) || (plan.id === "free" && !isPro);
-
-            return (
-              <div
-                key={plan.id}
-                className={`relative rounded-2xl transition-all duration-300 flex flex-col justify-between p-8 ${
-                  plan.id === "pro"
-                    ? "bg-gradient-to-b from-slate-900 via-slate-900/95 to-slate-950 border-2 border-cyan-500/40 shadow-2xl shadow-cyan-500/10 hover:border-cyan-500/60"
-                    : "bg-slate-900/60 border border-slate-800 hover:border-slate-700"
-                }`}
-              >
-                {plan.id === "pro" && (
-                  <div className="absolute -top-3.5 right-6 bg-gradient-to-r from-cyan-500 to-blue-600 text-white text-[11px] font-extrabold uppercase tracking-widest px-3 py-1 rounded-full shadow-md">
-                    Most Popular
-                  </div>
+        {/* Current plan */}
+        <div className="mt-8">
+          {authLoading ? (
+            <Card className="p-6">
+              <Skeleton className="h-5 w-40" />
+              <Skeleton className="mt-3 h-4 w-80 max-w-full" />
+            </Card>
+          ) : user ? (
+            <Card className="flex flex-col gap-6 p-6 md:flex-row md:items-center md:justify-between">
+              <div className="min-w-0">
+                <div className="flex items-center gap-2">
+                  <p className="text-sm text-fg-muted">Current plan</p>
+                  <Badge tone={isPro ? "primary" : "neutral"}>{isPro ? "Pro Intelligence" : "Free Starter"}</Badge>
+                </div>
+                <p className="mt-2 max-w-xl text-sm text-fg">
+                  {isPro
+                    ? "You have full access to unlimited AI analyses, deep scoring breakdowns, and priority queues."
+                    : "You are currently on the Free Starter tier with daily usage limits."}
+                </p>
+                {isPro && (
+                  <Button
+                    variant="link"
+                    size="sm"
+                    onClick={() => setConfirmCancelOpen(true)}
+                    className="mt-2 text-fg-subtle hover:text-danger"
+                  >
+                    Cancel subscription
+                  </Button>
                 )}
+              </div>
 
-                <div className="space-y-6">
-                  <div>
-                    <h3 className="text-2xl font-bold text-white flex items-center gap-2">
-                      {plan.name}
-                      {plan.id === "pro" && <Zap className="w-5 h-5 text-cyan-400 fill-cyan-400" />}
-                    </h3>
-                    <div className="mt-4 flex items-baseline gap-1">
-                      <span className="text-4xl sm:text-5xl font-extrabold text-white">
-                        {plan.currency === "INR" ? "₹" : "$"}{plan.price}
-                      </span>
-                      <span className="text-slate-400 text-sm">/{plan.interval}</span>
-                    </div>
-                  </div>
+              <div className="w-full shrink-0 rounded-lg border border-border bg-surface-2/60 p-4 md:w-80">
+                <div className="flex items-baseline justify-between text-sm">
+                  <span className="text-fg-muted">Today&apos;s usage</span>
+                  <span className={cn("font-semibold tabular-nums", !isPro && dailyUsed >= 3 ? "text-danger" : "text-fg")}>
+                    {dailyUsed} / {isPro ? "Unlimited" : 3} analyses
+                  </span>
+                </div>
+                <Progress
+                  className="mt-3"
+                  value={isPro ? 100 : Math.min((dailyUsed / 3) * 100, 100)}
+                  tone={isPro ? "primary" : dailyUsed >= 3 ? "danger" : "info"}
+                  label="Analyses used today"
+                />
+                {!isPro && (
+                  <p className="mt-2 text-xs text-fg-subtle">
+                    Resets daily at midnight UTC. Upgrade for unlimited evaluations.
+                  </p>
+                )}
+              </div>
+            </Card>
+          ) : (
+            <Alert
+              tone="info"
+              title="Sign in to see your plan and usage"
+              action={
+                <Link href="/login?redirect=/billing" className={buttonVariants({ variant: "secondary", size: "sm" })}>
+                  Sign in
+                </Link>
+              }
+            >
+              You can compare plans below. Upgrading requires an account.
+            </Alert>
+          )}
+        </div>
 
-                  <hr className="border-slate-800" />
+        {error && <Alert className="mt-6">{error}</Alert>}
 
-                  <ul className="space-y-3.5 text-sm text-slate-300">
-                    {plan.features.map((feature, idx) => (
-                      <li key={idx} className="flex items-start gap-3">
-                        <Check className="w-5 h-5 text-cyan-400 flex-shrink-0 mt-0.5" />
-                        <span>{feature}</span>
+        {/* Plans */}
+        <div className="mt-8 grid gap-6 md:grid-cols-2">
+          {isLoading ? (
+            Array.from({ length: 2 }).map((_, i) => (
+              <Card key={i} className="p-8">
+                <Skeleton className="h-6 w-40" />
+                <Skeleton className="mt-4 h-10 w-28" />
+                <div className="mt-8 space-y-3">
+                  {Array.from({ length: 4 }).map((__, j) => (
+                    <Skeleton key={j} className="h-4 w-full" />
+                  ))}
+                </div>
+                <Skeleton className="mt-8 h-11 w-full rounded-lg" />
+              </Card>
+            ))
+          ) : plansError ? (
+            <Alert
+              className="md:col-span-2"
+              title="We couldn't load pricing plans"
+              action={
+                <Button variant="secondary" size="sm" onClick={retryPlans}>
+                  <RefreshCw aria-hidden="true" />
+                  Retry
+                </Button>
+              }
+            >
+              Please check your connection and try again.
+            </Alert>
+          ) : (
+            plans.map((plan) => {
+              const isCurrentPlan = (plan.id === "pro" && isPro) || (plan.id === "free" && !isPro);
+              const highlighted = plan.id === "pro";
+
+              return (
+                <Card
+                  key={plan.id}
+                  className={cn(
+                    "relative flex flex-col p-6 sm:p-8",
+                    highlighted && "border-primary shadow-md ring-1 ring-primary"
+                  )}
+                >
+                  {highlighted && (
+                    <Badge tone="primary" className="absolute -top-3 right-6 border-primary bg-primary text-primary-foreground">
+                      Most popular
+                    </Badge>
+                  )}
+
+                  <h2 className="flex items-center gap-2 text-lg font-semibold text-fg">
+                    {plan.name}
+                    {highlighted && <Zap className="size-4 fill-current text-primary-text" aria-hidden="true" />}
+                  </h2>
+                  <p className="mt-4 flex items-baseline gap-1">
+                    <span className="text-4xl font-semibold tracking-tight text-fg">
+                      {plan.currency === "INR" ? "₹" : "$"}
+                      {plan.price}
+                    </span>
+                    <span className="text-sm text-fg-muted">/{plan.interval}</span>
+                  </p>
+
+                  <ul className="mt-6 flex-1 space-y-3 border-t border-border pt-6 text-sm">
+                    {plan.features.map((feature) => (
+                      <li key={feature} className="flex items-start gap-3">
+                        <Check className="mt-0.5 size-4 shrink-0 text-success" aria-hidden="true" />
+                        <span className="text-fg-muted">{feature}</span>
                       </li>
                     ))}
                   </ul>
-                </div>
 
-                <div className="mt-8 pt-6 border-t border-slate-800/60">
-                  {isCurrentPlan ? (
-                    <div className="space-y-3">
-                      <button
-                        disabled
-                        className="w-full py-3.5 px-4 rounded-xl bg-slate-800/80 border border-slate-700 text-slate-400 font-semibold text-sm cursor-not-allowed flex items-center justify-center gap-2"
+                  <div className="mt-8">
+                    {user && isCurrentPlan ? (
+                      <Button variant="secondary" fullWidth disabled>
+                        <ShieldCheck aria-hidden="true" />
+                        Current plan
+                      </Button>
+                    ) : plan.id === "pro" ? (
+                      <Button
+                        fullWidth
+                        size="lg"
+                        onClick={() => handleUpgrade("pro")}
+                        isLoading={checkoutLoading}
+                        loadingText="Connecting to Cashfree..."
                       >
-                        <ShieldCheck className="w-4 h-4 text-cyan-400" />
-                        <span>Current Active Plan</span>
-                      </button>
-                      {isPro && (
-                        <button
-                          onClick={handleCancel}
-                          disabled={cancelLoading}
-                          className="w-full py-2 text-xs text-slate-400 hover:text-red-400 transition font-medium"
-                        >
-                          {cancelLoading ? "Cancelling..." : "Cancel Subscription"}
-                        </button>
-                      )}
-                    </div>
-                  ) : plan.id === "pro" ? (
-                    <button
-                      onClick={() => handleUpgrade("pro")}
-                      disabled={checkoutLoading}
-                      className="w-full py-3.5 px-4 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white font-bold text-sm shadow-lg shadow-cyan-500/25 transition-all transform hover:-translate-y-0.5 flex items-center justify-center gap-2"
-                    >
-                      {checkoutLoading ? (
-                        <>
-                          <Loader2 className="w-4 h-4 animate-spin" />
-                          <span>Connecting to Cashfree...</span>
-                        </>
-                      ) : (
-                        <>
-                          <Zap className="w-4 h-4 fill-white" />
-                          <span>Upgrade to Pro Now</span>
-                        </>
-                      )}
-                    </button>
-                  ) : (
-                    <button
-                      disabled
-                      className="w-full py-3.5 px-4 rounded-xl bg-slate-800/40 border border-slate-800 text-slate-500 font-medium text-sm"
-                    >
-                      Free Tier Included
-                    </button>
-                  )}
-                </div>
-              </div>
-            );
-          })}
+                        <Zap aria-hidden="true" />
+                        {user ? "Upgrade to Pro" : "Sign in to upgrade"}
+                      </Button>
+                    ) : (
+                      <Button variant="secondary" fullWidth disabled>
+                        Free tier included
+                      </Button>
+                    )}
+                  </div>
+                </Card>
+              );
+            })
+          )}
         </div>
-      </div>
-    </div>
+
+        <p className="mt-8 text-center text-sm text-fg-subtle">
+          <Lock className="-mt-0.5 mr-1.5 inline size-3.5" aria-hidden="true" />
+          Payments are processed securely by Cashfree Payments in INR. See our{" "}
+          <Link href="/refund" className="font-medium text-fg-muted underline-offset-4 hover:text-fg hover:underline">
+            cancellation &amp; refund policy
+          </Link>
+          .
+        </p>
+      </Container>
+
+      <ConfirmDialog
+        open={confirmCancelOpen}
+        onCancel={() => setConfirmCancelOpen(false)}
+        onConfirm={handleCancel}
+        isLoading={cancelLoading}
+        tone="danger"
+        title="Cancel your Pro subscription?"
+        description="You will return to the Free tier (3 analyses/day)."
+        confirmLabel="Cancel subscription"
+        cancelLabel="Keep Pro"
+      />
+    </PageShell>
   );
 }

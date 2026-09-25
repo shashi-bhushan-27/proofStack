@@ -1,5 +1,15 @@
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { EmptyState, Progress } from "@/components/ui/feedback";
+
+export interface OperationStat {
+  operation: string;
+  requests: number;
+  avg_latency_ms: number;
+  cost: number;
+}
+
 interface OperationBreakdownProps {
-  data: any[];
+  data: OperationStat[];
 }
 
 export function OperationBreakdown({ data }: OperationBreakdownProps) {
@@ -7,43 +17,33 @@ export function OperationBreakdown({ data }: OperationBreakdownProps) {
   const maxRequests = data.length > 0 ? Math.max(...data.map((d) => d.requests)) : 1;
 
   return (
-    <div className="rounded-2xl border border-slate-800 bg-slate-900/50 p-6 shadow-lg">
-      <h3 className="text-sm font-bold uppercase tracking-wider text-slate-400 mb-6">
-        Operations Breakdown
-      </h3>
-      
-      <div className="space-y-4">
-        {data.map((item) => (
-          <div key={item.operation} className="relative">
-            <div className="flex justify-between items-end mb-1">
-              <span className="text-xs font-medium text-slate-300">
-                {item.operation}
-              </span>
-              <div className="text-right">
-                <span className="text-xs font-bold text-white block">
-                  {item.requests.toLocaleString()} <span className="text-slate-500 font-normal">reqs</span>
-                </span>
-              </div>
-            </div>
-            <div className="h-1.5 w-full bg-slate-800 rounded-full overflow-hidden">
-              <div
-                className="h-full bg-indigo-500 rounded-full"
-                style={{ width: `${(item.requests / maxRequests) * 100}%` }}
-              />
-            </div>
-            <div className="flex justify-between mt-1 text-[10px] text-slate-500">
-              <span>{item.avg_latency_ms}ms avg latency</span>
-              <span>${item.cost.toFixed(4)} total cost</span>
-            </div>
-          </div>
-        ))}
-
-        {data.length === 0 && (
-          <div className="text-center py-8 text-sm text-slate-500">
-            No operations recorded
-          </div>
+    <Card className="h-full">
+      <CardHeader>
+        <CardTitle>Operations breakdown</CardTitle>
+      </CardHeader>
+      <CardContent>
+        {data.length === 0 ? (
+          <EmptyState className="py-8" title="No operations recorded" />
+        ) : (
+          <ul className="space-y-5">
+            {data.map((item) => (
+              <li key={item.operation}>
+                <div className="mb-1.5 flex items-baseline justify-between gap-3 text-sm">
+                  <span className="truncate font-medium text-fg">{item.operation}</span>
+                  <span className="shrink-0 tabular-nums text-fg">
+                    {item.requests.toLocaleString()} <span className="text-fg-subtle">reqs</span>
+                  </span>
+                </div>
+                <Progress value={(item.requests / maxRequests) * 100} label={`${item.operation} share of requests`} />
+                <div className="mt-1.5 flex justify-between text-xs text-fg-subtle">
+                  <span>{item.avg_latency_ms}ms avg latency</span>
+                  <span className="tabular-nums">${item.cost.toFixed(4)} total cost</span>
+                </div>
+              </li>
+            ))}
+          </ul>
         )}
-      </div>
-    </div>
+      </CardContent>
+    </Card>
   );
 }

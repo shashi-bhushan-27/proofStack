@@ -1,4 +1,6 @@
 import { LucideIcon } from "lucide-react";
+import { Card } from "@/components/ui/card";
+import { cn } from "@/lib/utils";
 
 interface MetricCardProps {
   title: string;
@@ -10,27 +12,21 @@ interface MetricCardProps {
 
 export function MetricCard({ title, value, icon: Icon, trend, trendUp }: MetricCardProps) {
   return (
-    <div className="rounded-2xl border border-slate-800 bg-slate-900/50 p-6 flex flex-col justify-between shadow-lg">
-      <div className="flex items-center justify-between mb-4">
-        <span className="text-xs font-bold uppercase tracking-wider text-slate-500">
-          {title}
+    <Card className="p-5">
+      <div className="flex items-center justify-between gap-3">
+        <span className="text-sm text-fg-muted">{title}</span>
+        <span className="flex size-8 items-center justify-center rounded-lg bg-primary-soft text-primary-text">
+          <Icon className="size-4" aria-hidden="true" />
         </span>
-        <div className="p-2 rounded-lg bg-indigo-500/10">
-          <Icon className="h-5 w-5 text-indigo-400" />
-        </div>
       </div>
-      <div className="mt-2">
-        <span className="text-3xl font-black text-white">{value}</span>
+      <div className="mt-3 flex flex-wrap items-baseline gap-x-3 gap-y-1">
+        <span className="text-2xl font-semibold tabular-nums tracking-tight text-fg">{value}</span>
         {trend && (
-          <span
-            className={`ml-3 text-xs font-bold ${
-              trendUp ? "text-emerald-400" : "text-rose-400"
-            }`}
-          >
+          <span className={cn("text-xs font-medium", trendUp ? "text-success" : "text-danger")}>
             {trendUp ? "↑" : "↓"} {trend}
           </span>
         )}
       </div>
-    </div>
+    </Card>
   );
 }

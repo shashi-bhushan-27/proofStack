@@ -1,287 +1,253 @@
-"use client";
-
 import Link from "next/link";
-import { Header } from "@/components/layout/header";
-import { Footer } from "@/components/layout/footer";
 import {
-  Sparkles,
-  ShieldCheck,
-  CheckCircle2,
-  XCircle,
-  TrendingUp,
-  Award,
-  Zap,
+  ArrowDown,
   ArrowRight,
+  Award,
+  CheckCircle2,
   Code2,
+  FileSearch,
+  MessageSquareText,
   Search,
-  MessageSquareCode,
+  ShieldCheck,
+  TrendingUp,
+  Upload,
+  XCircle,
+  Zap,
 } from "lucide-react";
+import { Container, PageShell } from "@/components/layout/page";
+import { buttonVariants } from "@/components/ui/button";
+
+const dimensions = [
+  {
+    icon: Zap,
+    title: "Strong action verbs",
+    description:
+      "We check if you use powerful technical verbs that clearly explain what you personally designed, built, optimized, or deployed.",
+  },
+  {
+    icon: Code2,
+    title: "Technical context",
+    description: "We ensure your bullets explain where, how, and why each tool was used within the broader system architecture.",
+  },
+  {
+    icon: Search,
+    title: "Engineering depth",
+    description: "We help you highlight authentic problem-solving and technical complexity beyond superficial keyword drops.",
+  },
+  {
+    icon: ShieldCheck,
+    title: "Personal scope & ownership",
+    description: "We verify that your individual contributions and exact scope of ownership shine through clearly to recruiters.",
+  },
+  {
+    icon: TrendingUp,
+    title: "Tangible outcomes",
+    description:
+      "We guide you to describe specific product features, performance gains, or operational improvements caused by your work.",
+  },
+  {
+    icon: Award,
+    title: "Quantified impact",
+    description: "We prompt you to quantify your success with real numbers, latency reductions, scale metrics, and exact percentages.",
+  },
+];
+
+const steps = [
+  {
+    icon: Upload,
+    title: "Upload resume & target job",
+    description:
+      "Upload your existing PDF resume and paste any job description you want to apply for. No sign-up required to test.",
+  },
+  {
+    icon: FileSearch,
+    title: "Get your fit score & feedback",
+    description:
+      "Our AI computes a transparent 0-100 fit score and reveals exactly which required skills lack strong proof in your resume.",
+  },
+  {
+    icon: MessageSquareText,
+    title: "Chat & copy STAR bullets",
+    description:
+      "Chat with our AI coach to answer probing questions about your projects, and copy high-impact STAR bullets into your resume.",
+  },
+];
+
+function SectionHeading({ eyebrow, title, description }: { eyebrow: string; title: string; description?: string }) {
+  return (
+    <div className="mx-auto max-w-2xl text-center">
+      <p className="text-sm font-medium text-primary-text">{eyebrow}</p>
+      <h2 className="mt-3 text-3xl font-semibold tracking-tight text-fg sm:text-4xl">{title}</h2>
+      {description && <p className="mt-4 text-base leading-relaxed text-fg-muted">{description}</p>}
+    </div>
+  );
+}
 
 export default function LandingPage() {
   return (
-    <div className="min-h-screen flex flex-col bg-[#020617] text-slate-100">
-      <Header />
-
-      <main className="flex-1">
-
-        {/* =============================================
-            HERO SECTION (Badge, Headline, Subtitle, CTA Buttons — Perfectly centered above the fold)
-            ============================================= */}
-        <section className="relative overflow-hidden min-h-[calc(100vh-4.25rem)] flex flex-col justify-center">
-          {/* Background decorations */}
-          <div className="absolute inset-0 bg-dot-pattern opacity-30 pointer-events-none" />
-          <div
-            className="absolute top-32 left-1/2 -translate-x-1/2 w-[700px] h-[400px] rounded-full blur-[140px] pointer-events-none"
-            style={{ background: "radial-gradient(ellipse, rgba(99,102,241,0.15), transparent 70%)" }}
-          />
-
-          <div className="relative z-10 mx-auto max-w-5xl px-6 sm:px-10 lg:px-16 py-12 flex flex-col items-center text-center my-auto">
-            {/* Badge */}
-            <div className="inline-flex items-center gap-2 rounded-full border border-indigo-500/30 bg-indigo-500/10 px-4 py-1.5 text-xs sm:text-sm font-semibold text-indigo-300 shadow-lg shadow-indigo-500/5 mb-6 sm:mb-8">
-              <Sparkles className="h-3.5 w-3.5 text-indigo-400 flex-shrink-0" />
-              <span>Personal AI Resume Coach & Evidence Verification for Job Seekers</span>
-            </div>
-
-            {/* Headline */}
-            <h1 className="text-4xl sm:text-5xl lg:text-6xl font-extrabold tracking-tight text-white leading-tight max-w-4xl">
-              Don&apos;t just list keywords.{" "}
-              <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 via-violet-400 to-purple-400">
-                Prove real skill impact
-              </span>{" "}
-              and get shortlisted by modern ATS.
+    <PageShell>
+      {/* Hero */}
+      <section className="relative overflow-hidden border-b border-border">
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-0 bg-[radial-gradient(var(--border)_1px,transparent_1px)] [background-size:24px_24px] [mask-image:linear-gradient(to_bottom,black,transparent_85%)]"
+        />
+        <Container size="wide" className="relative grid items-center gap-12 py-16 sm:py-20 lg:grid-cols-[1.05fr_1fr] lg:gap-16 lg:py-24">
+          <div className="animate-fade-in">
+            <p className="inline-flex items-center gap-2 rounded-full border border-border bg-surface px-3 py-1 text-xs font-medium text-fg-muted shadow-xs">
+              <span className="size-1.5 rounded-full bg-primary" aria-hidden="true" />
+              Personal AI resume coach &amp; evidence verification
+            </p>
+            <h1 className="mt-6 text-4xl font-semibold tracking-tight text-fg sm:text-5xl lg:text-[3.5rem] lg:leading-[1.08]">
+              Don&apos;t just list keywords. <span className="text-primary-text">Prove real skill impact</span> and get
+              shortlisted.
             </h1>
-
-            {/* Subtitle */}
-            <p className="mt-6 max-w-2xl text-base sm:text-lg text-slate-300/90 leading-relaxed">
-              Modern ATS and hiring managers quickly reject keyword-stuffed resumes that simply list{" "}
-              <code className="text-indigo-300 bg-slate-800/80 px-2 py-0.5 rounded border border-slate-700 text-xs sm:text-sm font-mono">
+            <p className="mt-6 max-w-xl text-base leading-relaxed text-fg-muted sm:text-lg">
+              Modern ATS and hiring managers quickly reject resumes that simply list{" "}
+              <code className="rounded border border-border bg-surface-2 px-1.5 py-0.5 font-mono text-[0.85em] text-fg">
                 PostgreSQL
               </code>{" "}
               or{" "}
-              <code className="text-indigo-300 bg-slate-800/80 px-2 py-0.5 rounded border border-slate-700 text-xs sm:text-sm font-mono">
+              <code className="rounded border border-border bg-surface-2 px-1.5 py-0.5 font-mono text-[0.85em] text-fg">
                 Kubernetes
               </code>{" "}
-              without proof. <strong className="text-white">proofStack</strong> analyzes your experience against your target job, identifies weak evidence, and helps you craft shortlist-ready STAR bullets in minutes.
+              without proof. proofStack checks your experience against your target job, flags weak evidence, and helps
+              you write shortlist-ready STAR bullets in minutes.
             </p>
-
-            {/* CTA Buttons */}
-            <div className="mt-8 sm:mt-10 flex flex-col sm:flex-row items-center justify-center gap-4 w-full sm:w-auto">
-              <Link
-                href="/analysis/new"
-                className="w-full sm:w-auto inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-indigo-500 to-violet-600 px-8 py-3.5 text-sm sm:text-base font-bold text-white shadow-lg shadow-indigo-500/20 hover:shadow-indigo-500/35 hover:from-indigo-600 hover:to-violet-700 transition-all duration-200"
-              >
-                <span>Check Your Resume Free</span>
-                <ArrowRight className="h-4 w-4" />
+            <div className="mt-8 flex flex-col gap-3 sm:flex-row">
+              <Link href="/analysis/new" className={buttonVariants({ size: "lg" })}>
+                Check your resume free
+                <ArrowRight aria-hidden="true" />
               </Link>
-              <Link
-                href="#how-it-works"
-                className="w-full sm:w-auto inline-flex items-center justify-center gap-2 rounded-xl border border-slate-700 bg-slate-900/70 px-8 py-3.5 text-sm sm:text-base font-semibold text-slate-200 hover:bg-slate-800 hover:border-slate-600 hover:text-white transition-all duration-200"
-              >
-                <span>See How We Boost Shortlists</span>
+              <Link href="#how-it-works" className={buttonVariants({ variant: "secondary", size: "lg" })}>
+                See how it works
               </Link>
             </div>
+            <ul className="mt-6 flex flex-wrap gap-x-5 gap-y-2 text-sm text-fg-subtle">
+              {["No sign-up needed", "3 free checks per day", "PDF resumes up to 10 MB"].map((item) => (
+                <li key={item} className="inline-flex items-center gap-1.5">
+                  <CheckCircle2 className="size-4 text-success" aria-hidden="true" />
+                  {item}
+                </li>
+              ))}
+            </ul>
           </div>
-        </section>
 
-        {/* =============================================
-            COMPARISON BOX SECTION (Cleanly separated below the hero fold)
-            ============================================= */}
-        <section className="relative overflow-hidden pb-20 sm:pb-24 pt-4 sm:pt-8 px-6 sm:px-10 lg:px-16">
-          <div className="mx-auto max-w-4xl rounded-2xl border border-slate-700/60 bg-slate-900/50 p-6 sm:p-8 shadow-2xl backdrop-blur-sm">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-left">
-              {/* Before Card */}
-              <div className="rounded-xl border border-rose-500/20 bg-rose-500/[0.04] p-5 space-y-4">
-                <div className="flex items-center gap-2.5 text-rose-400 font-bold text-sm">
-                  <XCircle className="h-4 w-4 flex-shrink-0" />
-                  <span>Before: Standard Keyword-Only Resume</span>
-                </div>
-                <div className="p-3.5 rounded-lg bg-slate-950/70 border border-slate-800/60 font-mono text-xs text-slate-300 leading-relaxed">
-                  &quot;Skills: Redis, Docker, FastAPI, AWS&quot;
-                </div>
-                <p className="text-xs text-rose-300/90 font-medium leading-relaxed">
-                  ❌ Rejected by modern screeners — Lacks specific implementation details, clear ownership, and measurable business outcomes.
-                </p>
-              </div>
-
-              {/* After Card */}
-              <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/[0.04] p-5 space-y-4">
-                <div className="flex items-center gap-2.5 text-emerald-400 font-bold text-sm">
-                  <CheckCircle2 className="h-4 w-4 flex-shrink-0" />
-                  <span>After: proofStack Optimized Bullet</span>
-                </div>
-                <div className="p-3.5 rounded-lg bg-slate-950/70 border border-slate-800/60 font-mono text-xs text-slate-200 leading-relaxed">
-                  &quot;Designed and deployed a high-throughput Redis caching layer for FastAPI endpoints, reducing API latency by 35%&quot;
-                </div>
-                <p className="text-xs text-emerald-300/90 font-medium leading-relaxed">
-                  ★ Shortlist Ready — Proves real action, engineering depth, personal ownership, and verified impact!
-                </p>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        {/* =============================================
-            6 EVIDENCE DIMENSIONS SECTION
-            ============================================= */}
-        <section
-          id="evidence-dimensions"
-          className="border-t border-slate-800/60 bg-slate-950/50"
-        >
-          <div className="mx-auto max-w-6xl px-6 sm:px-10 lg:px-16 py-24 sm:py-32 lg:py-36">
-            {/* Section Header */}
-            <div className="text-center max-w-3xl mx-auto mb-16 sm:mb-20">
-              <span className="text-xs font-bold uppercase tracking-[0.2em] text-indigo-400 block mb-4">
-                Your Shortlist Advantage
-              </span>
-              <h2 className="text-3xl sm:text-4xl lg:text-5xl font-extrabold text-white leading-tight">
-                How proofStack Optimizes Your Resume Across 6 Dimensions
-              </h2>
-              <p className="mt-6 text-base sm:text-lg text-slate-400 leading-relaxed max-w-2xl mx-auto">
-                We scan your resume against your target job description using these exact criteria, showing you what to fix so your application stands out at top tech companies.
+          {/* Before / after example */}
+          <figure className="animate-fade-in rounded-2xl border border-border bg-surface p-4 shadow-lg sm:p-6 [animation-delay:120ms]">
+            <figcaption className="mb-4 flex items-center justify-between text-xs font-medium text-fg-subtle">
+              <span>Example rewrite</span>
+              <span className="rounded-md bg-surface-2 px-2 py-0.5">Redis · FastAPI</span>
+            </figcaption>
+            <div className="rounded-xl border border-danger-border bg-danger-soft p-4">
+              <p className="flex items-center gap-2 text-sm font-medium text-fg">
+                <XCircle className="size-4 text-danger" aria-hidden="true" />
+                Before: keyword-only resume
+              </p>
+              <p className="mt-3 rounded-lg border border-border bg-surface px-3 py-2.5 font-mono text-xs leading-relaxed text-fg-muted">
+                &quot;Skills: Redis, Docker, FastAPI, AWS&quot;
+              </p>
+              <p className="mt-3 text-xs leading-relaxed text-fg-muted">
+                Rejected by modern screeners: lacks implementation details, clear ownership, and measurable business
+                outcomes.
               </p>
             </div>
-
-            {/* Dimension Cards Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8">
-              {[
-                {
-                  icon: <Zap className="h-6 w-6 text-indigo-400" />,
-                  title: "1. Strong Action Verbs",
-                  desc: "We check if you use powerful technical verbs that clearly explain what you personally designed, built, optimized, or deployed.",
-                  badge: "Action Verbs",
-                },
-                {
-                  icon: <Code2 className="h-6 w-6 text-violet-400" />,
-                  title: "2. Technical Context",
-                  desc: "We ensure your bullets explain where, how, and why each tool was used within the broader system architecture.",
-                  badge: "System Context",
-                },
-                {
-                  icon: <Search className="h-6 w-6 text-blue-400" />,
-                  title: "3. Engineering Depth",
-                  desc: "We help you highlight authentic problem-solving and technical complexity beyond superficial keyword drops.",
-                  badge: "Engineering Depth",
-                },
-                {
-                  icon: <ShieldCheck className="h-6 w-6 text-emerald-400" />,
-                  title: "4. Personal Scope & Ownership",
-                  desc: "We verify that your individual contributions and exact scope of ownership shine through clearly to recruiters.",
-                  badge: "Personal Scope",
-                },
-                {
-                  icon: <TrendingUp className="h-6 w-6 text-amber-400" />,
-                  title: "5. Tangible Outcomes",
-                  desc: "We guide you to describe specific product features, performance gains, or operational improvements caused by your work.",
-                  badge: "Business Value",
-                },
-                {
-                  icon: <Award className="h-6 w-6 text-rose-400" />,
-                  title: "6. Quantified Impact",
-                  desc: "We prompt you to quantify your success with real numbers, latency reductions, scale metrics, and exact percentages.",
-                  badge: "Quantified Metrics",
-                },
-              ].map((dim, idx) => (
-                <div
-                  key={idx}
-                  className="rounded-2xl border border-slate-800/70 bg-slate-900/40 p-7 sm:p-8 transition-all duration-200 hover:border-slate-700 hover:bg-slate-900/70 hover:shadow-xl flex flex-col"
-                >
-                  <div className="flex items-center justify-between mb-6">
-                    <div className="p-3 rounded-xl bg-slate-800/70">{dim.icon}</div>
-                    <span className="text-xs font-semibold px-3 py-1.5 rounded-full bg-slate-800/80 text-slate-300 border border-slate-700/60">
-                      {dim.badge}
-                    </span>
-                  </div>
-                  <h3 className="text-lg font-bold text-white mb-3">{dim.title}</h3>
-                  <p className="text-sm text-slate-400 leading-relaxed flex-1">{dim.desc}</p>
-                </div>
-              ))}
+            <div className="flex justify-center py-2 text-fg-subtle" aria-hidden="true">
+              <ArrowDown className="size-4" />
             </div>
-          </div>
-        </section>
-
-        {/* =============================================
-            HOW IT WORKS SECTION
-            ============================================= */}
-        <section
-          id="how-it-works"
-          className="border-t border-slate-800/60 bg-[#020617]"
-        >
-          <div className="mx-auto max-w-6xl px-6 sm:px-10 lg:px-16 py-24 sm:py-32 lg:py-36">
-            {/* Section Header */}
-            <div className="text-center max-w-3xl mx-auto mb-16 sm:mb-20">
-              <span className="text-xs font-bold uppercase tracking-[0.2em] text-indigo-400 block mb-4">
-                3 Simple Steps To Get Shortlisted
-              </span>
-              <h2 className="text-3xl sm:text-4xl lg:text-5xl font-extrabold text-white leading-tight">
-                Upgrade Your Resume &amp; Generate STAR Bullets in Minutes
-              </h2>
+            <div className="rounded-xl border border-success-border bg-success-soft p-4">
+              <p className="flex items-center gap-2 text-sm font-medium text-fg">
+                <CheckCircle2 className="size-4 text-success" aria-hidden="true" />
+                After: proofStack-optimized bullet
+              </p>
+              <p className="mt-3 rounded-lg border border-border bg-surface px-3 py-2.5 font-mono text-xs leading-relaxed text-fg">
+                &quot;Designed and deployed a high-throughput Redis caching layer for FastAPI endpoints, reducing API
+                latency by 35%&quot;
+              </p>
+              <p className="mt-3 text-xs leading-relaxed text-fg-muted">
+                Shortlist-ready: proves real action, engineering depth, personal ownership, and verified impact.
+              </p>
             </div>
+          </figure>
+        </Container>
+      </section>
 
-            {/* Step Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-8 sm:gap-10">
-              {[
-                {
-                  step: "01",
-                  title: "Upload Resume & Target JD",
-                  desc: "Upload your existing PDF resume and paste any job description you want to apply for. No sign-up required to test.",
-                },
-                {
-                  step: "02",
-                  title: "Get Instant Fit & Feedback",
-                  desc: "Our AI computes a transparent 0-100 fit score and reveals exactly which required skills lack strong proof in your resume.",
-                },
-                {
-                  step: "03",
-                  title: "Chat & Copy STAR Bullets",
-                  desc: "Chat with our AI coach to answer probing questions about your projects, and instantly copy high-impact STAR bullets into your resume.",
-                },
-              ].map((item, idx) => (
-                <div
-                  key={idx}
-                  className="rounded-2xl border border-slate-800/70 bg-slate-900/30 p-8 sm:p-10 shadow-lg flex flex-col"
-                >
-                  <span className="text-5xl font-black text-indigo-500/15 mb-6 block leading-none">
-                    {item.step}
+      {/* Six evidence dimensions */}
+      <section id="evidence-dimensions" className="py-20 sm:py-28">
+        <Container size="wide">
+          <SectionHeading
+            eyebrow="Your shortlist advantage"
+            title="How proofStack checks your resume across 6 dimensions"
+            description="We scan your resume against your target job description using these exact criteria, showing you what to fix so your application stands out at top tech companies."
+          />
+          <div className="mt-14 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {dimensions.map((dimension, index) => (
+              <div
+                key={dimension.title}
+                className="rounded-xl border border-border bg-surface p-6 transition-colors hover:border-border-strong"
+              >
+                <div className="flex items-center gap-3">
+                  <span className="flex size-9 items-center justify-center rounded-lg bg-primary-soft text-primary-text">
+                    <dimension.icon className="size-[18px]" aria-hidden="true" />
                   </span>
-                  <h3 className="text-xl font-bold text-white mb-4">{item.title}</h3>
-                  <p className="text-sm text-slate-400 leading-relaxed flex-1">{item.desc}</p>
+                  <span className="text-xs font-medium text-fg-subtle">0{index + 1}</span>
                 </div>
-              ))}
-            </div>
-          </div>
-        </section>
-
-        {/* =============================================
-            CTA SECTION
-            ============================================= */}
-        <section className="border-t border-slate-800/60 bg-gradient-to-b from-slate-950 to-[#020617]">
-          <div className="mx-auto max-w-5xl px-6 sm:px-10 lg:px-16 py-24 sm:py-32">
-            <div className="rounded-3xl border border-indigo-500/25 bg-slate-900/80 p-10 sm:p-16 shadow-2xl backdrop-blur-sm flex flex-col items-center text-center">
-              <div className="p-5 rounded-2xl bg-indigo-500/10 text-indigo-400 mb-8">
-                <MessageSquareCode className="h-10 w-10" />
+                <h3 className="mt-4 text-base font-semibold text-fg">{dimension.title}</h3>
+                <p className="mt-2 text-sm leading-relaxed text-fg-muted">{dimension.description}</p>
               </div>
-              <h2 className="text-3xl sm:text-4xl font-extrabold text-white max-w-2xl leading-tight">
-                Ready to transform your resume and win more interviews?
-              </h2>
-              <p className="mt-6 max-w-xl text-base sm:text-lg text-slate-300 leading-relaxed">
-                No credit card or sign-up required for your first check. Identify weak evidence and build shortlist-ready bullet points before submitting your application.
-              </p>
-              <div className="mt-10">
-                <Link
-                  href="/analysis/new"
-                  className="inline-flex items-center gap-2.5 rounded-2xl bg-gradient-to-r from-indigo-500 to-violet-600 px-10 py-5 text-lg font-bold text-white shadow-xl shadow-indigo-500/25 hover:from-indigo-600 hover:to-violet-700 transition-all duration-200"
-                >
-                  <Sparkles className="h-5 w-5" />
-                  <span>Check &amp; Improve Your Resume Free</span>
-                </Link>
-              </div>
-            </div>
+            ))}
           </div>
-        </section>
+        </Container>
+      </section>
 
-      </main>
+      {/* How it works */}
+      <section id="how-it-works" className="border-y border-border bg-surface py-20 sm:py-28">
+        <Container size="wide">
+          <SectionHeading
+            eyebrow="3 simple steps to get shortlisted"
+            title="Upgrade your resume & generate STAR bullets in minutes"
+          />
+          <ol className="mt-14 grid gap-8 md:grid-cols-3 md:gap-6">
+            {steps.map((step, index) => (
+              <li key={step.title} className="relative">
+                {index < steps.length - 1 && (
+                  <div aria-hidden="true" className="absolute left-12 right-0 top-5 hidden h-px bg-border md:block" />
+                )}
+                <div className="relative flex size-10 items-center justify-center rounded-full border border-border bg-bg text-sm font-semibold text-fg">
+                  {index + 1}
+                </div>
+                <h3 className="mt-5 flex items-center gap-2 text-base font-semibold text-fg">
+                  <step.icon className="size-4 text-primary-text" aria-hidden="true" />
+                  {step.title}
+                </h3>
+                <p className="mt-2 text-sm leading-relaxed text-fg-muted">{step.description}</p>
+              </li>
+            ))}
+          </ol>
+        </Container>
+      </section>
 
-      <Footer />
-    </div>
+      {/* Final call to action */}
+      <section className="py-20 sm:py-28">
+        <Container size="narrow" className="text-center">
+          <h2 className="text-3xl font-semibold tracking-tight text-fg sm:text-4xl">
+            Ready to transform your resume and win more interviews?
+          </h2>
+          <p className="mx-auto mt-4 max-w-xl text-base leading-relaxed text-fg-muted">
+            No credit card or sign-up required for your first check. Identify weak evidence and build shortlist-ready
+            bullet points before submitting your application.
+          </p>
+          <div className="mt-8 flex flex-col justify-center gap-3 sm:flex-row">
+            <Link href="/analysis/new" className={buttonVariants({ size: "lg" })}>
+              Check &amp; improve your resume free
+              <ArrowRight aria-hidden="true" />
+            </Link>
+            <Link href="/billing" className={buttonVariants({ variant: "secondary", size: "lg" })}>
+              View pricing
+            </Link>
+          </div>
+        </Container>
+      </section>
+    </PageShell>
   );
 }

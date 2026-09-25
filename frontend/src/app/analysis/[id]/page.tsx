@@ -1,34 +1,73 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useEffect, useRef, useState } from "react";
+import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
-import { Header } from "@/components/layout/header";
-import { Footer } from "@/components/layout/footer";
+import {
+  ArrowLeft,
+  CheckCircle2,
+  ChevronRight,
+  FileSearch,
+  Lightbulb,
+  Loader2,
+  Plus,
+  RefreshCw,
+  XCircle,
+} from "lucide-react";
 import { analysisApi, interrogationApi } from "@/lib/api";
 import { useAuth } from "@/providers/providers";
+import type {
+  AnalysisReport,
+  EvidenceLevel,
+  InterrogationSession,
+  ReportJobRequirement,
+  ReportRecommendation,
+  ReportSkillEvidence,
+} from "@/types";
 import {
-  getScoreColor,
-  getScoreVerdict,
-  getEvidenceLevelColor,
-  getEvidenceLevelLabel,
-  getPriorityColor,
+  cn,
   formatDate,
+  formatScore,
+  getErrorMessage,
+  getErrorStatus,
+  getEvidenceLevelLabel,
+  getEvidenceLevelTone,
+  getImportanceTone,
+  getPriorityTone,
+  getScoreTone,
+  getScoreVerdict,
+  getStatusInfo,
+  type Tone,
 } from "@/lib/utils";
-import {
-  ShieldCheck,
-  CheckCircle2,
-  XCircle,
-  AlertTriangle,
-  HelpCircle,
-  Sparkles,
-  Loader2,
-  Send,
-  Lock,
-  ChevronRight,
-  Filter,
-  FileText,
-  Briefcase,
-} from "lucide-react";
+import { Container, PageShell } from "@/components/layout/page";
+import { InterviewPanel } from "@/components/analysis/interview-panel";
+import { ScoreRing } from "@/components/analysis/score-ring";
+import { Badge } from "@/components/ui/badge";
+import { Button, buttonVariants } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import { CopyButton } from "@/components/ui/copy-button";
+import { EmptyState, Progress, Skeleton } from "@/components/ui/feedback";
+
+type LevelFilter = "all" | EvidenceLevel;
+
+const LEVEL_ORDER: EvidenceLevel[] = ["strong", "moderate", "weak", "mentioned_only", "missing"];
+
+const levelDot: Record<Tone, string> = {
+  neutral: "bg-neutral-solid",
+  primary: "bg-primary",
+  success: "bg-success-solid",
+  warning: "bg-warning-solid",
+  danger: "bg-danger-solid",
+  info: "bg-info-solid",
+};
+
+const PRIORITY_RANK: Record<string, number> = { critical: 0, high: 1, medium: 2, low: 3 };
+
+const UNKNOWN_REQUIREMENT: Pick<ReportJobRequirement, "skill_name" | "importance" | "category"> = {
+  skill_name: "Unknown Skill",
+  importance: "optional",
+  category: "tool",
+};
 
 export default function AnalysisReportPage() {
   const params = useParams();
@@ -36,17 +75,18 @@ export default function AnalysisReportPage() {
   const analysisId = params.id as string;
   const { isAuthenticated } = useAuth();
 
-  const [analysis, setAnalysis] = useState<any | null>(null);
+  const [analysis, setAnalysis] = useState<AnalysisReport | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<{ message: string; status: number } | null>(null);
+  const [reloadKey, setReloadKey] = useState(0);
 
   // Selected skill evidence item for inspection & interrogation
-  const [selectedSkill, setSelectedSkill] = useState<any | null>(null);
-  const [filterLevel, setFilterLevel] = useState<string>("all");
+  const [selectedSkill, setSelectedSkill] = useState<ReportSkillEvidence | null>(null);
+  const [filterLevel, setFilterLevel] = useState<LevelFilter>("all");
+  const detailRef = useRef<HTMLDivElement>(null);
 
   // Interrogation Chat State
-  const [interrogationSession, setInterrogationSession] = useState<any | null>(null);
-  const [chatMessage, setChatMessage] = useState("");
+  const [interrogationSession, setInterrogationSession] = useState<InterrogationSession | null>(null);
   const [isSendingMsg, setIsSendingMsg] = useState(false);
   const [isStartingChat, setIsStartingChat] = useState(false);
   const [chatError, setChatError] = useState<string | null>(null);
@@ -56,22 +96,35 @@ export default function AnalysisReportPage() {
     async function fetchDetail() {
       try {
         const token = localStorage.getItem(`guest_token_${analysisId}`);
-        const headers: Record<string, string> = {};
-        if (token) headers.Authorization = `Bearer ${token}`;
-
         const res = await analysisApi.get(analysisId, token || undefined);
         setAnalysis(res.data);
+        setError(null);
         if (res.data.skill_evidences && res.data.skill_evidences.length > 0) {
           setSelectedSkill(res.data.skill_evidences[0]);
         }
-      } catch (err: any) {
-        setError(err?.detail || "Could not load analysis report.");
+      } catch (err) {
+        setError({ message: getErrorMessage(err, "Could not load analysis report."), status: getErrorStatus(err) });
       } finally {
         setIsLoading(false);
       }
     }
     if (analysisId) fetchDetail();
-  }, [analysisId]);
+  }, [analysisId, reloadKey]);
+
+  const reload = () => {
+    setIsLoading(true);
+    setReloadKey((key) => key + 1);
+  };
+
+  const selectSkill = (skill: ReportSkillEvidence) => {
+    setSelectedSkill(skill);
+    setInterrogationSession(null);
+    setChatError(null);
+    // On stacked (mobile/tablet) layouts, bring the detail panel into view.
+    if (window.matchMedia("(max-width: 1023px)").matches) {
+      requestAnimationFrame(() => detailRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }));
+    }
+  };
 
   // Start Interrogation for selected skill
   const handleStartInterrogation = async (evidenceId: string) => {
@@ -84,404 +137,586 @@ export default function AnalysisReportPage() {
     try {
       const res = await interrogationApi.start(analysisId, { skill_evidence_id: evidenceId });
       setInterrogationSession(res.data);
-    } catch (err: any) {
-      setChatError(err?.detail || "Could not start AI interrogation session.");
+    } catch (err) {
+      setChatError(getErrorMessage(err, "Could not start AI interrogation session."));
     } finally {
       setIsStartingChat(false);
     }
   };
 
   // Send Chat Message
-  const handleSendMessage = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!chatMessage.trim() || !interrogationSession) return;
+  const handleSendMessage = async (textToSend: string) => {
+    if (!textToSend.trim() || !interrogationSession) return false;
     setIsSendingMsg(true);
     setChatError(null);
 
-    const textToSend = chatMessage;
-    setChatMessage("");
-
+    let delivered = false;
     try {
       await interrogationApi.sendMessage(interrogationSession.id, { content: textToSend });
+      delivered = true;
       // Reload session
       const res = await interrogationApi.getSession(interrogationSession.id);
       setInterrogationSession(res.data);
-    } catch (err: any) {
-      setChatError(err?.detail || "Failed to send message.");
+    } catch (err) {
+      setChatError(getErrorMessage(err, "Failed to send message."));
     } finally {
       setIsSendingMsg(false);
     }
+    return delivered;
   };
 
   if (isLoading) {
     return (
-      <div className="flex min-h-screen flex-col bg-[#020617] text-white">
-        <Header />
-        <div className="flex flex-1 items-center justify-center">
-          <Loader2 className="h-10 w-10 animate-spin text-indigo-400" />
-        </div>
-        <Footer />
-      </div>
+      <PageShell>
+        <ReportSkeleton />
+      </PageShell>
     );
   }
 
   if (error || !analysis) {
+    const status = error?.status ?? 0;
     return (
-      <div className="flex min-h-screen flex-col bg-[#020617] text-white">
-        <Header />
-        <div className="flex flex-1 flex-col items-center justify-center px-4 text-center">
-          <XCircle className="h-12 w-12 text-rose-500 mb-4" />
-          <h1 className="text-xl font-bold">Failed to load report</h1>
-          <p className="mt-2 text-sm text-slate-400 max-w-md">{error}</p>
-        </div>
-        <Footer />
-      </div>
+      <PageShell>
+        <Container size="narrow" className="py-16">
+          <Card>
+            <EmptyState
+              headingLevel="h1"
+              icon={<XCircle />}
+              title={
+                status === 401
+                  ? "Sign in to view this report"
+                  : status === 404
+                    ? "Report not found"
+                    : "We couldn't load this report"
+              }
+              description={
+                status === 401
+                  ? "This evaluation belongs to an account. Sign in with that account to open it."
+                  : error?.message
+              }
+              action={
+                status === 401 ? (
+                  <Link
+                    href={`/login?redirect=${encodeURIComponent(`/analysis/${analysisId}`)}`}
+                    className={buttonVariants()}
+                  >
+                    Sign in
+                  </Link>
+                ) : (
+                  <>
+                    {status !== 404 && (
+                      <Button onClick={reload}>
+                        <RefreshCw aria-hidden="true" />
+                        Try again
+                      </Button>
+                    )}
+                    <Link
+                      href={isAuthenticated ? "/dashboard" : "/analysis/new"}
+                      className={buttonVariants({ variant: "secondary" })}
+                    >
+                      {isAuthenticated ? "Back to dashboard" : "Start a new evaluation"}
+                    </Link>
+                  </>
+                )
+              }
+            />
+          </Card>
+        </Container>
+      </PageShell>
     );
   }
 
-  // Filter skills
-  const filteredSkills = (analysis.skill_evidences || []).filter((se: any) =>
-    filterLevel === "all" ? true : se.evidence_level === filterLevel
-  );
+  if (analysis.status !== "completed") {
+    const failed = analysis.status === "failed";
+    return (
+      <PageShell>
+        <Container size="narrow" className="py-16">
+          <Card>
+            <EmptyState
+              headingLevel="h1"
+              icon={failed ? <XCircle /> : <Loader2 className="animate-spin" />}
+              title={failed ? "This evaluation couldn't be completed" : "Your evaluation is still running"}
+              description={
+                failed
+                  ? "The analysis pipeline failed. Please ensure the resume text is legible and try a new evaluation."
+                  : `${getStatusInfo(analysis.status).label}. Check back in a moment.`
+              }
+              action={
+                failed ? (
+                  <Link href="/analysis/new" className={buttonVariants()}>
+                    <Plus aria-hidden="true" />
+                    New evaluation
+                  </Link>
+                ) : (
+                  <Button onClick={reload}>
+                    <RefreshCw aria-hidden="true" />
+                    Refresh status
+                  </Button>
+                )
+              }
+            />
+          </Card>
+        </Container>
+      </PageShell>
+    );
+  }
+
+  const skillEvidences = analysis.skill_evidences || [];
+  const requirements = analysis.job_requirements || [];
 
   // Helper to get requirement name
-  const getReqInfo = (reqId: string) => {
-    return (
-      (analysis.job_requirements || []).find((r: any) => r.id === reqId) || {
-        skill_name: "Unknown Skill",
-        importance: "optional",
-        category: "tool",
-      }
-    );
-  };
+  const getReqInfo = (reqId: string) => requirements.find((r) => r.id === reqId) || UNKNOWN_REQUIREMENT;
+
+  // Filter skills
+  const filteredSkills = skillEvidences.filter((se) => (filterLevel === "all" ? true : se.evidence_level === filterLevel));
+
+  const levelCounts = LEVEL_ORDER.map((level) => ({
+    level,
+    count: skillEvidences.filter((se) => se.evidence_level === level).length,
+  }));
+
+  const overall = formatScore(analysis.overall_score);
+  const subScores = [
+    { label: "Required skill coverage", value: analysis.required_coverage_score },
+    { label: "Evidence strength", value: analysis.evidence_strength_score },
+    { label: "Preferred skill coverage", value: analysis.preferred_coverage_score },
+    { label: "Experience relevance", value: analysis.experience_relevance_score },
+    { label: "Resume communication", value: analysis.communication_score },
+    { label: "Supported claims ratio", value: analysis.unsupported_claims_score },
+  ].filter((sub): sub is { label: string; value: number } => typeof sub.value === "number");
+
+  const breakdown = analysis.scoring_breakdown;
+  const recommendations = [...(analysis.recommendations || [])].sort(
+    (a, b) => (PRIORITY_RANK[a.priority] ?? 9) - (PRIORITY_RANK[b.priority] ?? 9)
+  );
 
   return (
-    <div className="flex min-h-screen flex-col bg-[#020617] text-white">
-      <Header />
+    <PageShell>
+      <Container size="wide" className="py-8 sm:py-10">
+        {isAuthenticated && (
+          <Link
+            href="/dashboard"
+            className="mb-6 inline-flex items-center gap-1.5 text-sm text-fg-muted transition-colors hover:text-fg"
+          >
+            <ArrowLeft className="size-4" aria-hidden="true" />
+            Back to dashboard
+          </Link>
+        )}
 
-      <main className="flex-1 py-10 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto w-full space-y-10">
-        {/* Header summary banner */}
-        <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-6 sm:p-8 shadow-2xl backdrop-blur-md">
-          <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
-            <div>
-              <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-indigo-400 mb-2">
-                <ShieldCheck className="h-4 w-4" /> Evidence Intelligence Report • {formatDate(analysis.created_at)}
-              </div>
-              <h1 className="text-2xl font-extrabold tracking-tight sm:text-3xl text-white">
-                Resume Fit Evaluation
-              </h1>
-              <p className="mt-1 text-sm text-slate-400">
-                Evaluating candidate evidence against <strong className="text-slate-200">{analysis.job_requirements?.length || 0} extracted job competencies</strong>.
-              </p>
-            </div>
-
-            {/* Score box */}
-            <div className="flex items-center gap-6 rounded-xl border border-indigo-500/30 bg-slate-950/80 px-6 py-4">
-              <div className="text-center">
-                <span className={`text-4xl font-black ${getScoreColor(analysis.overall_score || 0)}`}>
-                  {analysis.overall_score || 0}
-                  <span className="text-lg text-slate-500">/100</span>
-                </span>
-                <span className="block text-[11px] font-bold uppercase tracking-wider text-slate-400 mt-1">
-                  Overall Fit Score
-                </span>
-              </div>
-              <div className="border-l border-slate-800 pl-6 max-w-[200px]">
-                <p className="text-xs font-semibold text-slate-200">
-                  {getScoreVerdict(analysis.overall_score || 0)}
-                </p>
-              </div>
-            </div>
+        {/* Report header */}
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+          <div className="min-w-0">
+            <p className="text-sm font-medium text-primary-text">Evidence report · {formatDate(analysis.created_at)}</p>
+            <h1 className="mt-2 text-2xl font-semibold tracking-tight text-fg sm:text-3xl">
+              {analysis.job_title || "Resume fit evaluation"}
+            </h1>
+            <p className="mt-2 text-sm text-fg-muted">
+              Candidate evidence evaluated against {requirements.length} extracted job competencies.
+            </p>
           </div>
-
-          {/* Sub-scores grid */}
-          <div className="mt-8 grid grid-cols-2 sm:grid-cols-4 gap-4 pt-6 border-t border-slate-800/80">
-            {[
-              { label: "Required Skill Coverage", score: analysis.required_coverage_score || 0 },
-              { label: "Evidence Strength Avg", score: analysis.evidence_strength_score || 0 },
-              { label: "Communication Score", score: analysis.communication_score || 0 },
-              { label: "Supported Claims Ratio", score: analysis.unsupported_claims_score || 0 },
-            ].map((sub, idx) => (
-              <div key={idx} className="rounded-xl bg-slate-950/50 p-3.5 border border-slate-800/60">
-                <span className="text-xs text-slate-400 block mb-1">{sub.label}</span>
-                <span className={`text-xl font-bold ${getScoreColor(sub.score)}`}>{sub.score}%</span>
-              </div>
-            ))}
-          </div>
+          <Link href="/analysis/new" className={buttonVariants({ variant: "secondary" })}>
+            <Plus aria-hidden="true" />
+            New evaluation
+          </Link>
         </div>
 
-        {/* Main 2-column layout: Evidence Matrix (Left) & Skill Detail / Interrogation (Right) */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-          {/* Left: Skill Evidence Table */}
-          <div className="lg:col-span-7 space-y-4">
-            <div className="flex items-center justify-between">
-              <h2 className="text-lg font-bold text-white flex items-center gap-2">
-                <Filter className="h-5 w-5 text-indigo-400" /> Skill Evidence Matrix
-              </h2>
-
-              <select
-                value={filterLevel}
-                onChange={(e) => setFilterLevel(e.target.value)}
-                className="rounded-lg border border-slate-800 bg-slate-900 px-3 py-1.5 text-xs text-slate-300 focus:border-indigo-500 focus:outline-none"
-              >
-                <option value="all">All Evidence Levels ({analysis.skill_evidences?.length || 0})</option>
-                <option value="strong">Strong Evidence</option>
-                <option value="moderate">Moderate Evidence</option>
-                <option value="weak">Weak Evidence</option>
-                <option value="mentioned_only">Mentioned Only</option>
-                <option value="missing">Missing from Resume</option>
-              </select>
+        {/* Score overview */}
+        <Card className="mt-8 grid gap-8 p-6 sm:p-8 md:grid-cols-[auto_1fr] md:items-center">
+          <div className="flex items-center gap-5 md:flex-col md:gap-3 md:px-4 md:text-center">
+            <ScoreRing score={overall} size={128} strokeWidth={10} showMax label="Overall fit score" />
+            <div className="md:max-w-44">
+              <p className="text-sm font-medium text-fg-muted">Overall fit score</p>
+              <p className="mt-1 text-sm font-semibold text-fg">{getScoreVerdict(analysis.overall_score || 0)}</p>
             </div>
+          </div>
 
-            <div className="rounded-xl border border-slate-800 bg-slate-900/40 overflow-hidden divide-y divide-slate-800/60">
-              {filteredSkills.map((se: any) => {
-                const req = getReqInfo(se.job_requirement_id);
-                const isSelected = selectedSkill?.id === se.id;
-
+          <div className="md:border-l md:border-border md:pl-8">
+            <dl className="grid gap-x-8 gap-y-5 sm:grid-cols-2">
+              {subScores.map((sub) => {
+                const value = formatScore(sub.value);
                 return (
-                  <div
-                    key={se.id}
-                    onClick={() => {
-                      setSelectedSkill(se);
-                      setInterrogationSession(null);
-                    }}
-                    className={`p-4 cursor-pointer transition-all flex items-center justify-between gap-4 ${
-                      isSelected
-                        ? "bg-slate-800/80 border-l-4 border-l-indigo-500"
-                        : "hover:bg-slate-900/80"
-                    }`}
-                  >
-                    <div>
-                      <div className="flex items-center gap-2 mb-1">
-                        <span className="text-sm font-bold text-white">{req.skill_name}</span>
-                        <span className={`px-2 py-0.5 rounded text-[10px] font-semibold border ${
-                          req.importance === "required"
-                            ? "bg-rose-500/10 text-rose-300 border-rose-500/20"
-                            : "bg-amber-500/10 text-amber-300 border-amber-500/20"
-                        }`}>
-                          {req.importance.toUpperCase()}
-                        </span>
-                      </div>
-                      <p className="text-xs text-slate-400 line-clamp-1">
-                        {se.classification_explanation}
-                      </p>
+                  <div key={sub.label}>
+                    <div className="flex items-baseline justify-between gap-3">
+                      <dt className="text-sm text-fg-muted">{sub.label}</dt>
+                      <dd className="text-sm font-semibold tabular-nums text-fg">{value}%</dd>
                     </div>
-
-                    <div className="flex items-center gap-3 flex-shrink-0">
-                      <span className={`px-2.5 py-1 rounded-full text-xs font-semibold border ${getEvidenceLevelColor(se.evidence_level)}`}>
-                        {getEvidenceLevelLabel(se.evidence_level)}
-                      </span>
-                      <ChevronRight className="h-4 w-4 text-slate-500" />
-                    </div>
+                    <Progress value={value} tone={getScoreTone(value)} label={sub.label} className="mt-2" />
                   </div>
                 );
               })}
-            </div>
-          </div>
-
-          {/* Right: Skill Details & Interrogation Panel */}
-          <div className="lg:col-span-5 space-y-6">
-            {selectedSkill ? (
-              <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-6 shadow-xl space-y-6 sticky top-24">
-                {/* Selected skill header */}
-                <div className="flex items-center justify-between border-b border-slate-800 pb-4">
-                  <div>
-                    <span className="text-xs text-slate-400 uppercase font-semibold block">Inspecting Skill</span>
-                    <h3 className="text-xl font-bold text-white mt-0.5">
-                      {getReqInfo(selectedSkill.job_requirement_id).skill_name}
-                    </h3>
-                  </div>
-                  <span className={`px-3 py-1 rounded-full text-xs font-bold border ${getEvidenceLevelColor(selectedSkill.evidence_level)}`}>
-                    {getEvidenceLevelLabel(selectedSkill.evidence_level)} ({selectedSkill.score} pts)
-                  </span>
-                </div>
-
-                {/* 6 Dimensions checklist */}
-                <div>
-                  <h4 className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-3">
-                    6-Dimension Verification
-                  </h4>
-                  <div className="grid grid-cols-2 gap-2 text-xs">
-                    {[
-                      { label: "Action Demonstrated", pass: selectedSkill.action_demonstrated },
-                      { label: "Technical Context", pass: selectedSkill.technical_context },
-                      { label: "Implementation Depth", pass: selectedSkill.implementation_depth },
-                      { label: "Ownership Clarity", pass: selectedSkill.ownership_clarity },
-                      { label: "Outcome Described", pass: selectedSkill.outcome_described },
-                      { label: "Measurability", pass: selectedSkill.measurability },
-                    ].map((d, idx) => (
-                      <div
-                        key={idx}
-                        className={`flex items-center gap-2 p-2 rounded-lg border ${
-                          d.pass
-                            ? "bg-emerald-500/10 border-emerald-500/30 text-emerald-300"
-                            : "bg-slate-950/60 border-slate-800 text-slate-500"
-                        }`}
-                      >
-                        {d.pass ? <CheckCircle2 className="h-3.5 w-3.5 flex-shrink-0" /> : <XCircle className="h-3.5 w-3.5 flex-shrink-0" />}
-                        <span className="font-medium line-clamp-1">{d.label}</span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Supporting Text Snippet */}
-                {selectedSkill.supporting_text && (
-                  <div>
-                    <h4 className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-2">
-                      Best Supporting Resume Snippet
-                    </h4>
-                    <div className="rounded-xl bg-slate-950/80 p-3.5 border border-slate-800 font-mono text-xs text-slate-300 leading-relaxed">
-                      &quot;{selectedSkill.supporting_text}&quot;
-                    </div>
-                  </div>
+            </dl>
+            {breakdown && typeof breakdown.total_required_skills === "number" && (
+              <p className="mt-6 border-t border-border pt-4 text-sm text-fg-muted">
+                <span className="font-medium text-fg">
+                  {breakdown.covered_required_skills ?? 0} of {breakdown.total_required_skills}
+                </span>{" "}
+                required skills covered
+                {typeof breakdown.total_preferred_skills === "number" && breakdown.total_preferred_skills > 0 && (
+                  <>
+                    {" · "}
+                    <span className="font-medium text-fg">
+                      {breakdown.covered_preferred_skills ?? 0} of {breakdown.total_preferred_skills}
+                    </span>{" "}
+                    preferred
+                  </>
                 )}
-
-                {/* Classification Explanation */}
-                <div>
-                  <h4 className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-1.5">
-                    Why This Rating?
-                  </h4>
-                  <p className="text-xs text-slate-300 leading-relaxed">
-                    {selectedSkill.classification_explanation}
-                  </p>
-                </div>
-
-                {/* AI Interrogation Chat Trigger / Area */}
-                <div className="pt-4 border-t border-slate-800">
-                  {!interrogationSession ? (
-                    <div className="rounded-xl border border-indigo-500/30 bg-gradient-to-br from-indigo-950/40 to-slate-900 p-4 text-center">
-                      <Sparkles className="h-6 w-6 text-indigo-400 mx-auto mb-2" />
-                      <h4 className="text-sm font-bold text-white">Strengthen This Evidence</h4>
-                      <p className="text-xs text-slate-300 mt-1 mb-3 leading-relaxed">
-                        Launch an AI interview to uncover your technical depth and generate a verified STAR bullet point.
-                      </p>
-                      <button
-                        onClick={() => handleStartInterrogation(selectedSkill.id)}
-                        disabled={isStartingChat}
-                        className="w-full flex items-center justify-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 text-xs font-bold text-white hover:bg-indigo-500 transition-colors shadow-lg shadow-indigo-500/20 disabled:opacity-50"
-                      >
-                        {isStartingChat ? (
-                          <>
-                            <Loader2 className="h-3.5 w-3.5 animate-spin" /> Starting AI Interview...
-                          </>
-                        ) : !isAuthenticated ? (
-                          <>
-                            <Lock className="h-3.5 w-3.5" /> Sign In to Interrogate
-                          </>
-                        ) : (
-                          <>
-                            <Sparkles className="h-3.5 w-3.5" /> Launch Interrogation Chat
-                          </>
-                        )}
-                      </button>
-                      {chatError && <p className="mt-2 text-xs text-rose-400">{chatError}</p>}
-                    </div>
-                  ) : (
-                    /* Active Interrogation Chat Window */
-                    <div className="rounded-xl border border-indigo-500/30 bg-slate-950/90 flex flex-col h-[350px]">
-                      <div className="flex items-center justify-between p-3 border-b border-slate-800 bg-slate-900/60">
-                        <span className="text-xs font-bold text-indigo-300 flex items-center gap-1.5">
-                          <Sparkles className="h-3.5 w-3.5" /> Interrogating: {interrogationSession.skill_name}
-                        </span>
-                        <span className="text-[10px] text-slate-400 uppercase font-mono">
-                          {interrogationSession.status}
-                        </span>
-                      </div>
-
-                      {/* Messages scroll */}
-                      <div className="flex-1 overflow-y-auto p-3 space-y-3 text-xs">
-                        {(interrogationSession.messages || []).map((msg: any, idx: number) => (
-                          <div
-                            key={idx}
-                            className={`flex flex-col ${
-                              msg.role === "user" ? "items-end" : "items-start"
-                            }`}
-                          >
-                            <div
-                              className={`max-w-[85%] rounded-xl p-3 ${
-                                msg.role === "user"
-                                  ? "bg-indigo-600 text-white rounded-br-none"
-                                  : "bg-slate-800 text-slate-200 rounded-bl-none border border-slate-700"
-                              }`}
-                            >
-                              <p className="whitespace-pre-wrap leading-relaxed">{msg.content}</p>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-
-                      {/* Input form */}
-                      {interrogationSession.status === "active" && (
-                        <form onSubmit={handleSendMessage} className="p-2 border-t border-slate-800 flex gap-2">
-                          <input
-                            type="text"
-                            value={chatMessage}
-                            onChange={(e) => setChatMessage(e.target.value)}
-                            placeholder="Type exact technical implementation details..."
-                            className="flex-1 rounded-lg border border-slate-700 bg-slate-900 px-3 py-1.5 text-xs text-white placeholder-slate-500 focus:border-indigo-500 focus:outline-none"
-                          />
-                          <button
-                            type="submit"
-                            disabled={isSendingMsg || !chatMessage.trim()}
-                            className="flex items-center justify-center rounded-lg bg-indigo-600 px-3 py-1.5 text-white hover:bg-indigo-500 disabled:opacity-50"
-                          >
-                            {isSendingMsg ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Send className="h-3.5 w-3.5" />}
-                          </button>
-                        </form>
-                      )}
-                    </div>
-                  )}
-                </div>
-              </div>
-            ) : (
-              <div className="rounded-2xl border border-slate-800 bg-slate-900/40 p-8 text-center text-slate-400">
-                <FileText className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                <p className="text-sm">Select any skill from the left matrix to inspect exact evidence dimensions.</p>
-              </div>
+              </p>
             )}
           </div>
-        </div>
+        </Card>
 
-        {/* Recommendations Section */}
-        {analysis.recommendations && analysis.recommendations.length > 0 && (
-          <div className="rounded-2xl border border-slate-800 bg-slate-900/50 p-6 sm:p-8 space-y-6">
-            <h2 className="text-lg font-bold text-white flex items-center gap-2">
-              <Sparkles className="h-5 w-5 text-amber-400" /> Actionable Improvement Recommendations
+        {/* Skill evidence */}
+        <section className="mt-12" aria-labelledby="evidence-heading">
+          <div className="flex flex-col gap-1">
+            <h2 id="evidence-heading" className="text-lg font-semibold text-fg">
+              Skill evidence matrix
             </h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {analysis.recommendations.map((rec: any, idx: number) => (
-                <div
-                  key={idx}
-                  className="rounded-xl border border-slate-800 bg-slate-950/60 p-5 space-y-3 flex flex-col justify-between"
-                >
-                  <div>
-                    <div className="flex items-center justify-between mb-2">
-                      <span className={`px-2.5 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider border ${getPriorityColor(rec.priority)}`}>
-                        {rec.priority} Priority
-                      </span>
-                      <span className="text-xs font-semibold text-slate-400">{rec.category}</span>
-                    </div>
-                    <h3 className="text-sm font-bold text-white">{rec.title}</h3>
-                    <p className="text-xs text-slate-300 mt-1 leading-relaxed">{rec.description}</p>
-                  </div>
+            <p className="text-sm text-fg-muted">
+              How strongly your resume proves each skill the job asks for. Select a skill to see why.
+            </p>
+          </div>
 
-                  {rec.example_text && (
-                    <div className="rounded-lg bg-slate-900 p-3 border border-slate-800 font-mono text-[11px] text-emerald-300">
-                      <span className="text-[10px] text-slate-500 uppercase block mb-1 font-sans">
-                        Illustrative STAR Example:
-                      </span>
-                      &quot;{rec.example_text}&quot;
-                    </div>
-                  )}
-                </div>
-              ))}
+          {skillEvidences.length > 0 && (
+            <div className="mt-5 flex h-2 w-full overflow-hidden rounded-full bg-surface-3" aria-hidden="true">
+              {levelCounts
+                .filter((entry) => entry.count > 0)
+                .map((entry) => (
+                  <div
+                    key={entry.level}
+                    className={levelDot[getEvidenceLevelTone(entry.level)]}
+                    style={{ width: `${(entry.count / skillEvidences.length) * 100}%` }}
+                  />
+                ))}
+            </div>
+          )}
+
+          <div className="mt-4 flex flex-wrap gap-2" role="group" aria-label="Filter skills by evidence level">
+            <FilterChip active={filterLevel === "all"} onClick={() => setFilterLevel("all")}>
+              All <span className="text-fg-subtle">{skillEvidences.length}</span>
+            </FilterChip>
+            {levelCounts.map((entry) => (
+              <FilterChip
+                key={entry.level}
+                active={filterLevel === entry.level}
+                onClick={() => setFilterLevel(entry.level)}
+                disabled={entry.count === 0}
+              >
+                <span className={cn("size-2 rounded-full", levelDot[getEvidenceLevelTone(entry.level)])} aria-hidden="true" />
+                {getEvidenceLevelLabel(entry.level)} <span className="text-fg-subtle">{entry.count}</span>
+              </FilterChip>
+            ))}
+          </div>
+
+          <div className="mt-5 grid items-start gap-6 lg:grid-cols-12">
+            {/* Skill list */}
+            <Card className="overflow-hidden lg:col-span-7">
+              {filteredSkills.length === 0 ? (
+                <EmptyState
+                  icon={<FileSearch />}
+                  title="No skills match this filter"
+                  action={
+                    <Button variant="secondary" size="sm" onClick={() => setFilterLevel("all")}>
+                      Show all skills
+                    </Button>
+                  }
+                />
+              ) : (
+                <ul className="divide-y divide-border">
+                  {filteredSkills.map((se) => {
+                    const req = getReqInfo(se.job_requirement_id);
+                    const isSelected = selectedSkill?.id === se.id;
+                    const tone = getEvidenceLevelTone(se.evidence_level);
+                    return (
+                      <li key={se.id}>
+                        <button
+                          type="button"
+                          onClick={() => selectSkill(se)}
+                          aria-pressed={isSelected}
+                          className={cn(
+                            "relative flex w-full items-center gap-3 px-4 py-3.5 text-left transition-colors sm:px-5",
+                            isSelected ? "bg-primary-soft/70" : "hover:bg-surface-2"
+                          )}
+                        >
+                          {isSelected && <span className="absolute inset-y-0 left-0 w-0.5 bg-primary" aria-hidden="true" />}
+                          <span className={cn("size-2 shrink-0 rounded-full", levelDot[tone])} aria-hidden="true" />
+                          <span className="min-w-0 flex-1">
+                            <span className="flex flex-wrap items-center gap-2">
+                              <span className="font-medium text-fg">{req.skill_name}</span>
+                              <Badge tone={getImportanceTone(req.importance)} size="sm" className="capitalize">
+                                {req.importance}
+                              </Badge>
+                            </span>
+                            <span className="mt-0.5 line-clamp-1 text-xs text-fg-muted">{se.classification_explanation}</span>
+                          </span>
+                          <Badge tone={tone} className="hidden sm:inline-flex">
+                            {getEvidenceLevelLabel(se.evidence_level)}
+                          </Badge>
+                          <ChevronRight className="size-4 shrink-0 text-fg-subtle" aria-hidden="true" />
+                        </button>
+                      </li>
+                    );
+                  })}
+                </ul>
+              )}
+            </Card>
+
+            {/* Skill detail */}
+            <div ref={detailRef} className="scroll-mt-20 lg:sticky lg:top-20 lg:col-span-5">
+              {selectedSkill ? (
+                <SkillDetail
+                  skill={selectedSkill}
+                  requirement={getReqInfo(selectedSkill.job_requirement_id)}
+                >
+                  <InterviewPanel
+                    key={selectedSkill.id}
+                    session={interrogationSession}
+                    isAuthenticated={isAuthenticated}
+                    isStarting={isStartingChat}
+                    isSending={isSendingMsg}
+                    error={chatError}
+                    onStart={() => handleStartInterrogation(selectedSkill.id)}
+                    onSend={handleSendMessage}
+                  />
+                </SkillDetail>
+              ) : (
+                <Card>
+                  <EmptyState
+                    icon={<FileSearch />}
+                    title="Select a skill"
+                    description="Pick any skill from the matrix to inspect its exact evidence dimensions."
+                  />
+                </Card>
+              )}
             </div>
           </div>
-        )}
-      </main>
+        </section>
 
-      <Footer />
-    </div>
+        {/* Recommendations */}
+        {recommendations.length > 0 && (
+          <section className="mt-12" aria-labelledby="recommendations-heading">
+            <div className="flex flex-col gap-1">
+              <h2 id="recommendations-heading" className="flex items-center gap-2 text-lg font-semibold text-fg">
+                <Lightbulb className="size-5 text-warning" aria-hidden="true" />
+                Actionable improvements
+              </h2>
+              <p className="text-sm text-fg-muted">Ordered by priority. Start at the top for the biggest gains.</p>
+            </div>
+            <div className="mt-5 grid gap-4 md:grid-cols-2">
+              {recommendations.map((rec) => {
+                const related = rec.skill_evidence_id
+                  ? skillEvidences.find((se) => se.id === rec.skill_evidence_id)
+                  : undefined;
+                return (
+                  <RecommendationCard
+                    key={rec.id}
+                    recommendation={rec}
+                    relatedSkillName={related ? getReqInfo(related.job_requirement_id).skill_name : undefined}
+                    onViewSkill={
+                      related
+                        ? () => {
+                            setFilterLevel("all");
+                            selectSkill(related);
+                            document.getElementById("evidence-heading")?.scrollIntoView({ behavior: "smooth" });
+                          }
+                        : undefined
+                    }
+                  />
+                );
+              })}
+            </div>
+          </section>
+        )}
+      </Container>
+    </PageShell>
+  );
+}
+
+function FilterChip({
+  active,
+  disabled,
+  onClick,
+  children,
+}: {
+  active: boolean;
+  disabled?: boolean;
+  onClick: () => void;
+  children: React.ReactNode;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={disabled}
+      aria-pressed={active}
+      className={cn(
+        "inline-flex h-8 items-center gap-1.5 rounded-full border px-3 text-xs font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-40",
+        active
+          ? "border-fg bg-fg text-bg [&_.text-fg-subtle]:text-bg/70"
+          : "border-border bg-surface text-fg-muted hover:border-border-strong hover:text-fg"
+      )}
+    >
+      {children}
+    </button>
+  );
+}
+
+const DIMENSIONS: { key: keyof ReportSkillEvidence; label: string }[] = [
+  { key: "action_demonstrated", label: "Action demonstrated" },
+  { key: "technical_context", label: "Technical context" },
+  { key: "implementation_depth", label: "Implementation depth" },
+  { key: "ownership_clarity", label: "Ownership clarity" },
+  { key: "outcome_described", label: "Outcome described" },
+  { key: "measurability", label: "Measurability" },
+];
+
+function SkillDetail({
+  skill,
+  requirement,
+  children,
+}: {
+  skill: ReportSkillEvidence;
+  requirement: Pick<ReportJobRequirement, "skill_name" | "importance" | "category">;
+  children: React.ReactNode;
+}) {
+  const passed = DIMENSIONS.filter((d) => skill[d.key] === true).length;
+  return (
+    <Card className="animate-fade-in">
+      <div className="border-b border-border p-5 sm:p-6">
+        <p className="text-xs font-medium text-fg-subtle">Inspecting skill</p>
+        <div className="mt-1 flex flex-wrap items-center justify-between gap-3">
+          <h3 className="text-xl font-semibold text-fg">{requirement.skill_name}</h3>
+          <Badge tone={getEvidenceLevelTone(skill.evidence_level)}>
+            {getEvidenceLevelLabel(skill.evidence_level)} · {skill.score} pts
+          </Badge>
+        </div>
+        <Badge tone={getImportanceTone(requirement.importance)} size="sm" className="mt-2 capitalize">
+          {requirement.importance}
+        </Badge>
+      </div>
+
+      <div className="space-y-6 p-5 sm:p-6">
+        <div>
+          <div className="flex items-baseline justify-between">
+            <h4 className="text-sm font-semibold text-fg">6-dimension verification</h4>
+            <span className="text-xs tabular-nums text-fg-subtle">{passed} of 6 passed</span>
+          </div>
+          <ul className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2">
+            {DIMENSIONS.map((dimension) => {
+              const pass = skill[dimension.key] === true;
+              return (
+                <li
+                  key={dimension.key}
+                  className={cn(
+                    "flex items-center gap-2 rounded-md border px-2.5 py-2 text-xs",
+                    pass ? "border-success-border bg-success-soft text-fg" : "border-border bg-surface-2/60 text-fg-subtle"
+                  )}
+                >
+                  {pass ? (
+                    <CheckCircle2 className="size-3.5 shrink-0 text-success" aria-hidden="true" />
+                  ) : (
+                    <XCircle className="size-3.5 shrink-0" aria-hidden="true" />
+                  )}
+                  <span className="font-medium">{dimension.label}</span>
+                  <span className="sr-only">{pass ? "passed" : "not shown"}</span>
+                </li>
+              );
+            })}
+          </ul>
+        </div>
+
+        {skill.supporting_text && (
+          <div>
+            <h4 className="text-sm font-semibold text-fg">Best supporting resume snippet</h4>
+            <blockquote className="mt-2 border-l-2 border-primary-soft-border pl-3 text-sm italic leading-relaxed text-fg-muted">
+              &ldquo;{skill.supporting_text}&rdquo;
+            </blockquote>
+          </div>
+        )}
+
+        <div>
+          <h4 className="text-sm font-semibold text-fg">Why this rating?</h4>
+          <p className="mt-1.5 text-sm leading-relaxed text-fg-muted">{skill.classification_explanation}</p>
+        </div>
+
+        {children}
+      </div>
+    </Card>
+  );
+}
+
+function RecommendationCard({
+  recommendation: rec,
+  relatedSkillName,
+  onViewSkill,
+}: {
+  recommendation: ReportRecommendation;
+  relatedSkillName?: string;
+  onViewSkill?: () => void;
+}) {
+  return (
+    <Card className="flex flex-col p-5">
+      <div className="flex flex-wrap items-center gap-2">
+        <Badge tone={getPriorityTone(rec.priority)} className="capitalize">
+          {rec.priority} priority
+        </Badge>
+        {rec.category && <span className="text-xs text-fg-subtle">{rec.category}</span>}
+      </div>
+      <h3 className="mt-3 font-semibold text-fg">{rec.title}</h3>
+      <p className="mt-1.5 text-sm leading-relaxed text-fg-muted">{rec.description}</p>
+
+      {rec.example_text && (
+        <div className="mt-4 rounded-lg border border-border bg-surface-2/60 p-3">
+          <div className="flex items-center justify-between gap-2">
+            <p className="text-xs font-medium text-fg-subtle">Illustrative STAR example</p>
+            <CopyButton text={rec.example_text} variant="ghost" />
+          </div>
+          <p className="mt-1.5 text-sm leading-relaxed text-fg">{rec.example_text}</p>
+        </div>
+      )}
+
+      {relatedSkillName && onViewSkill && (
+        <button
+          type="button"
+          onClick={onViewSkill}
+          className="mt-4 inline-flex items-center gap-1 self-start text-xs font-medium text-primary-text hover:underline"
+        >
+          View {relatedSkillName} evidence
+          <ChevronRight className="size-3.5" aria-hidden="true" />
+        </button>
+      )}
+    </Card>
+  );
+}
+
+function ReportSkeleton() {
+  return (
+    <Container size="wide" className="py-8 sm:py-10" aria-busy="true" aria-label="Loading report">
+      <Skeleton className="h-4 w-48" />
+      <Skeleton className="mt-3 h-8 w-80 max-w-full" />
+      <Skeleton className="mt-3 h-4 w-64" />
+      <Card className="mt-8 flex flex-col gap-8 p-6 sm:p-8 md:flex-row">
+        <Skeleton className="size-32 shrink-0 rounded-full" />
+        <div className="grid flex-1 gap-5 sm:grid-cols-2">
+          {Array.from({ length: 6 }).map((_, i) => (
+            <div key={i}>
+              <Skeleton className="h-4 w-2/3" />
+              <Skeleton className="mt-2 h-1.5 w-full" />
+            </div>
+          ))}
+        </div>
+      </Card>
+      <div className="mt-12 grid gap-6 lg:grid-cols-12">
+        <Card className="space-y-4 p-5 lg:col-span-7">
+          {Array.from({ length: 6 }).map((_, i) => (
+            <Skeleton key={i} className="h-10 w-full" />
+          ))}
+        </Card>
+        <Card className="space-y-4 p-5 lg:col-span-5">
+          <Skeleton className="h-6 w-1/2" />
+          <Skeleton className="h-24 w-full" />
+          <Skeleton className="h-16 w-full" />
+        </Card>
+      </div>
+    </Container>
   );
 }
