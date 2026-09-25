@@ -1,268 +1,227 @@
 @import "tailwindcss";
 
-/* ==========================================
-   proofStack Design System — Custom Properties
-   ========================================== */
+/* Dark mode is class-driven (set before paint by the inline script in layout.tsx). */
+@custom-variant dark (&:where(.dark, .dark *));
+
+/* ==========================================================================
+   proofStack design tokens
+   Components only ever reference the semantic names below (bg-surface,
+   text-fg-muted, border-border, bg-primary ...), never raw palette colors,
+   so light and dark themes stay in sync automatically.
+   ========================================================================== */
 :root {
-  /* Brand Colors */
-  --color-primary: 99 102 241;       /* Indigo-500 */
-  --color-primary-light: 129 140 248; /* Indigo-400 */
-  --color-primary-dark: 79 70 229;   /* Indigo-600 */
-  
-  /* Evidence Level Colors */
-  --color-evidence-strong: 16 185 129;    /* Emerald-500 */
-  --color-evidence-moderate: 59 130 246;  /* Blue-500 */
-  --color-evidence-weak: 245 158 11;      /* Amber-500 */
-  --color-evidence-mentioned: 148 163 184; /* Slate-400 */
-  --color-evidence-missing: 244 63 94;    /* Rose-500 */
+  color-scheme: light;
 
-  /* Dark Theme (default) */
-  --background: 2 6 23;
-  --background-secondary: 15 23 42;
-  --background-tertiary: 30 41 59;
-  --foreground: 248 250 252;
-  --foreground-muted: 148 163 184;
-  --border: 51 65 85;
-  --border-light: 30 41 59;
-  
   /* Surfaces */
-  --card: 15 23 42;
-  --card-hover: 30 41 59;
-  --input: 30 41 59;
-  --ring: 99 102 241;
-  
-  /* Radius */
-  --radius: 0.625rem;
+  --bg: #f8fafc;
+  --surface: #ffffff;
+  --surface-2: #f1f5f9;
+  --surface-3: #e2e8f0;
+  --overlay: rgb(15 23 42 / 0.5);
 
-  /* Shadows */
-  --shadow-glow: 0 0 20px rgba(99, 102, 241, 0.15);
-  --shadow-glow-strong: 0 0 40px rgba(99, 102, 241, 0.25);
+  /* Lines */
+  --border: #e2e8f0;
+  --border-strong: #cbd5e1;
+
+  /* Text */
+  --fg: #0f172a;
+  --fg-muted: #475569;
+  --fg-subtle: #64748b;
+
+  /* Brand */
+  --primary: #4f46e5;
+  --primary-hover: #4338ca;
+  --primary-foreground: #ffffff;
+  --primary-text: #4f46e5;
+  --primary-soft: #eef2ff;
+  --primary-soft-border: #c7d2fe;
+  --ring: #6366f1;
+
+  /* Status */
+  --success: #059669;
+  --success-soft: #ecfdf5;
+  --success-border: #a7f3d0;
+  --warning: #b45309;
+  --warning-soft: #fffbeb;
+  --warning-border: #fde68a;
+  --danger: #dc2626;
+  --danger-soft: #fef2f2;
+  --danger-border: #fecaca;
+  --info: #2563eb;
+  --info-soft: #eff6ff;
+  --info-border: #bfdbfe;
+
+  /* Solid fills for meters, charts and dots */
+  --success-solid: #10b981;
+  --warning-solid: #f59e0b;
+  --danger-solid: #ef4444;
+  --info-solid: #3b82f6;
+  --neutral-solid: #94a3b8;
+
+  /* Charts */
+  --chart-1: #6366f1;
+  --chart-2: #10b981;
+  --chart-grid: #e2e8f0;
+  --chart-axis: #64748b;
 }
 
-/* ==========================================
-   Global Styles — NO universal reset that
-   could override Tailwind utilities
-   ========================================== */
-*, *::before, *::after {
-  box-sizing: border-box;
+.dark {
+  color-scheme: dark;
+
+  --bg: #020617;
+  --surface: #0b1222;
+  --surface-2: #121b2e;
+  --surface-3: #1e293b;
+  --overlay: rgb(2 6 23 / 0.72);
+
+  --border: #1e293b;
+  --border-strong: #334155;
+
+  --fg: #f1f5f9;
+  --fg-muted: #a3b0c2;
+  --fg-subtle: #7f8ea3;
+
+  --primary: #4f46e5;
+  --primary-hover: #6366f1;
+  --primary-foreground: #ffffff;
+  --primary-text: #a5b4fc;
+  --primary-soft: rgb(99 102 241 / 0.14);
+  --primary-soft-border: rgb(99 102 241 / 0.35);
+  --ring: #818cf8;
+
+  --success: #34d399;
+  --success-soft: rgb(16 185 129 / 0.12);
+  --success-border: rgb(16 185 129 / 0.3);
+  --warning: #fbbf24;
+  --warning-soft: rgb(245 158 11 / 0.12);
+  --warning-border: rgb(245 158 11 / 0.3);
+  --danger: #f87171;
+  --danger-soft: rgb(239 68 68 / 0.12);
+  --danger-border: rgb(239 68 68 / 0.3);
+  --info: #60a5fa;
+  --info-soft: rgb(59 130 246 / 0.12);
+  --info-border: rgb(59 130 246 / 0.3);
+
+  --success-solid: #10b981;
+  --warning-solid: #f59e0b;
+  --danger-solid: #ef4444;
+  --info-solid: #3b82f6;
+  --neutral-solid: #475569;
+
+  --chart-1: #818cf8;
+  --chart-2: #34d399;
+  --chart-grid: #1e293b;
+  --chart-axis: #7f8ea3;
 }
 
-html {
-  scroll-behavior: smooth;
+@theme inline {
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
+
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-surface-3: var(--surface-3);
+  --color-overlay: var(--overlay);
+
+  --color-border: var(--border);
+  --color-border-strong: var(--border-strong);
+
+  --color-fg: var(--fg);
+  --color-fg-muted: var(--fg-muted);
+  --color-fg-subtle: var(--fg-subtle);
+
+  --color-primary: var(--primary);
+  --color-primary-hover: var(--primary-hover);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary-text: var(--primary-text);
+  --color-primary-soft: var(--primary-soft);
+  --color-primary-soft-border: var(--primary-soft-border);
+  --color-ring: var(--ring);
+
+  --color-success: var(--success);
+  --color-success-soft: var(--success-soft);
+  --color-success-border: var(--success-border);
+  --color-success-solid: var(--success-solid);
+  --color-warning: var(--warning);
+  --color-warning-soft: var(--warning-soft);
+  --color-warning-border: var(--warning-border);
+  --color-warning-solid: var(--warning-solid);
+  --color-danger: var(--danger);
+  --color-danger-soft: var(--danger-soft);
+  --color-danger-border: var(--danger-border);
+  --color-danger-solid: var(--danger-solid);
+  --color-info: var(--info);
+  --color-info-soft: var(--info-soft);
+  --color-info-border: var(--info-border);
+  --color-info-solid: var(--info-solid);
+  --color-neutral-solid: var(--neutral-solid);
+
+  --animate-fade-in: fade-in 0.25s ease-out both;
+  --animate-slide-up: slide-up 0.2s ease-out both;
 }
 
-body {
-  font-family: var(--font-inter), -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-  background-color: rgb(var(--background));
-  color: rgb(var(--foreground));
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-  min-height: 100vh;
-}
-
-/* ==========================================
-   Scrollbar Styling
-   ========================================== */
-::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
-}
-
-::-webkit-scrollbar-track {
-  background: rgb(var(--background-secondary));
-}
-
-::-webkit-scrollbar-thumb {
-  background: rgb(var(--border));
-  border-radius: 3px;
-}
-
-::-webkit-scrollbar-thumb:hover {
-  background: rgb(var(--foreground-muted));
-}
-
-/* ==========================================
-   Selection
-   ========================================== */
-::selection {
-  background-color: rgba(99, 102, 241, 0.3);
-  color: rgb(var(--foreground));
-}
-
-/* ==========================================
-   Focus Styles
-   ========================================== */
-*:focus-visible {
-  outline: 2px solid rgb(var(--ring));
-  outline-offset: 2px;
-  border-radius: var(--radius);
-}
-
-/* ==========================================
-   Custom Animations
-   ========================================== */
 @keyframes fade-in {
-  from { opacity: 0; transform: translateY(8px); }
+  from { opacity: 0; transform: translateY(4px); }
   to { opacity: 1; transform: translateY(0); }
 }
 
-@keyframes fade-in-up {
-  from { opacity: 0; transform: translateY(20px); }
-  to { opacity: 1; transform: translateY(0); }
+@keyframes slide-up {
+  from { opacity: 0; transform: translateY(8px) scale(0.98); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
 }
 
-@keyframes slide-in-right {
-  from { opacity: 0; transform: translateX(20px); }
-  to { opacity: 1; transform: translateX(0); }
+/* ==========================================================================
+   Base
+   ========================================================================== */
+@layer base {
+  html {
+    scroll-behavior: smooth;
+    scroll-padding-top: 5rem;
+    scrollbar-color: var(--border-strong) transparent;
+  }
+
+  body {
+    background-color: var(--bg);
+    color: var(--fg);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+  }
+
+  ::selection {
+    background-color: var(--primary-soft-border);
+    color: var(--fg);
+  }
+
+  /* Lock page scroll while a modal <dialog> is open. */
+  html:has(dialog:modal) {
+    overflow: hidden;
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--ring);
+    outline-offset: 2px;
+  }
+
+  /* Buttons get a pointer cursor again (Tailwind v4 preflight resets it). */
+  button:not(:disabled),
+  [role="button"]:not([aria-disabled="true"]) {
+    cursor: pointer;
+  }
 }
 
-@keyframes pulse-glow {
-  0%, 100% { box-shadow: 0 0 5px rgba(99, 102, 241, 0.2); }
-  50% { box-shadow: 0 0 20px rgba(99, 102, 241, 0.4); }
-}
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
 
-@keyframes shimmer {
-  0% { background-position: -200% 0; }
-  100% { background-position: 200% 0; }
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
 }
-
-@keyframes spin-slow {
-  from { transform: rotate(0deg); }
-  to { transform: rotate(360deg); }
-}
-
-@keyframes progress-pulse {
-  0%, 100% { opacity: 0.6; }
-  50% { opacity: 1; }
-}
-
-.animate-fade-in {
-  animation: fade-in 0.5s ease-out forwards;
-}
-
-.animate-fade-in-up {
-  animation: fade-in-up 0.6s ease-out forwards;
-}
-
-.animate-slide-in-right {
-  animation: slide-in-right 0.5s ease-out forwards;
-}
-
-.animate-pulse-glow {
-  animation: pulse-glow 2s ease-in-out infinite;
-}
-
-.animate-shimmer {
-  background: linear-gradient(
-    90deg,
-    rgb(var(--background-tertiary)) 0%,
-    rgb(var(--border)) 50%,
-    rgb(var(--background-tertiary)) 100%
-  );
-  background-size: 200% 100%;
-  animation: shimmer 1.5s ease-in-out infinite;
-}
-
-.animate-spin-slow {
-  animation: spin-slow 3s linear infinite;
-}
-
-.animate-progress-pulse {
-  animation: progress-pulse 1.5s ease-in-out infinite;
-}
-
-/* ==========================================
-   Glass Effect
-   ========================================== */
-.glass {
-  background: rgba(15, 23, 42, 0.7);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  border: 1px solid rgba(51, 65, 85, 0.5);
-}
-
-.glass-strong {
-  background: rgba(15, 23, 42, 0.85);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  border: 1px solid rgba(51, 65, 85, 0.7);
-}
-
-/* ==========================================
-   Gradient Text
-   ========================================== */
-.gradient-text {
-  background: linear-gradient(135deg, rgb(var(--color-primary-light)), rgb(var(--color-primary)), #a855f7);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-}
-
-.gradient-text-evidence {
-  background: linear-gradient(135deg, #10b981, #3b82f6);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-}
-
-/* ==========================================
-   Card Hover Effects
-   ========================================== */
-.card-hover {
-  transition: all 0.3s ease;
-  border: 1px solid rgb(var(--border));
-}
-
-.card-hover:hover {
-  border-color: rgba(99, 102, 241, 0.4);
-  box-shadow: var(--shadow-glow);
-  transform: translateY(-2px);
-}
-
-/* ==========================================
-   Score Ring
-   ========================================== */
-.score-ring {
-  transform: rotate(-90deg);
-}
-
-.score-ring circle {
-  transition: stroke-dashoffset 1s ease-in-out;
-}
-
-/* ==========================================
-   Evidence Bar
-   ========================================== */
-.evidence-bar {
-  height: 4px;
-  border-radius: 2px;
-  background: rgb(var(--background-tertiary));
-  overflow: hidden;
-}
-
-.evidence-bar-fill {
-  height: 100%;
-  border-radius: 2px;
-  transition: width 0.8s ease-in-out;
-}
-
-/* ==========================================
-   Dot Grid Background Pattern
-   ========================================== */
-.bg-dot-pattern {
-  background-image: radial-gradient(
-    rgba(99, 102, 241, 0.08) 1px,
-    transparent 1px
-  );
-  background-size: 24px 24px;
-}
-
-/* ==========================================
-   Staggered Animation Delays
-   ========================================== */
-.stagger-1 { animation-delay: 0.1s; }
-.stagger-2 { animation-delay: 0.2s; }
-.stagger-3 { animation-delay: 0.3s; }
-.stagger-4 { animation-delay: 0.4s; }
-.stagger-5 { animation-delay: 0.5s; }
-.stagger-6 { animation-delay: 0.6s; }

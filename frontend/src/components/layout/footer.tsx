@@ -1,110 +1,90 @@
 import Link from "next/link";
-import { ShieldCheck, Mail, Phone, MapPin } from "lucide-react";
+import { Mail, MapPin, Phone } from "lucide-react";
+import { Logo } from "@/components/brand/logo";
+
+const productLinks = [
+  { href: "/#how-it-works", label: "How it works" },
+  { href: "/analysis/new", label: "New evaluation" },
+  { href: "/billing", label: "Pricing" },
+];
+
+const companyLinks = [
+  { href: "/contact", label: "Contact us" },
+  { href: "/privacy", label: "Privacy Policy" },
+  { href: "/terms", label: "Terms of Service" },
+  { href: "/refund", label: "Cancellation & Refund" },
+];
+
+function FooterLinks({ title, links }: { title: string; links: { href: string; label: string }[] }) {
+  return (
+    <div>
+      <h2 className="text-sm font-semibold text-fg">{title}</h2>
+      <ul className="mt-3 space-y-2.5 text-sm">
+        {links.map((link) => (
+          <li key={link.href}>
+            <Link href={link.href} className="text-fg-muted transition-colors hover:text-fg">
+              {link.label}
+            </Link>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
 
 export function Footer() {
   return (
-    <footer className="border-t border-slate-800/80 bg-slate-950 pt-12 pb-8 text-slate-400">
-      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-        <div className="grid grid-cols-1 gap-8 md:grid-cols-12 pb-10 border-b border-slate-800/60">
-          {/* Brand Info */}
-          <div className="md:col-span-5 space-y-4">
-            <div className="flex items-center gap-2.5">
-              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-indigo-600 text-white shadow-md shadow-indigo-500/20">
-                <ShieldCheck className="h-4 w-4" />
-              </div>
-              <span className="text-lg font-bold tracking-tight text-white">
-                proof<span className="text-indigo-400">Stack</span>
-              </span>
-              <span className="ml-2 rounded-full bg-slate-900 border border-slate-800 px-2.5 py-0.5 text-xs text-slate-400">
-                v1.0
-              </span>
+    <footer className="border-t border-border bg-surface">
+      <div className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
+        <div className="grid gap-10 md:grid-cols-12">
+          <div className="md:col-span-4">
+            <div className="flex items-center gap-2">
+              <Logo size="sm" />
+              <span className="rounded-md border border-border px-1.5 py-px text-[11px] font-medium text-fg-subtle">v1.0</span>
             </div>
-            <p className="text-xs text-slate-400 leading-relaxed max-w-sm">
-              Personal AI Resume Coach &amp; Evidence Platform. Helping candidates build verifiable proof of skills and generate shortlist-ready STAR bullet points to beat modern ATS.
+            <p className="mt-4 max-w-sm text-sm leading-relaxed text-fg-muted">
+              Personal AI resume coach &amp; evidence platform. Helping candidates build verifiable proof of skills and
+              generate shortlist-ready STAR bullet points to beat modern ATS.
             </p>
           </div>
 
-          {/* Quick Links */}
-          <div className="md:col-span-3 space-y-3">
-            <h4 className="text-xs font-semibold uppercase tracking-wider text-white">Quick Links</h4>
-            <ul className="space-y-2 text-xs">
+          <div className="grid grid-cols-2 gap-8 md:col-span-4">
+            <FooterLinks title="Product" links={productLinks} />
+            <FooterLinks title="Company" links={companyLinks} />
+          </div>
+
+          <div className="md:col-span-4">
+            <h2 className="text-sm font-semibold text-fg">Direct contact &amp; support</h2>
+            <ul className="mt-3 space-y-2.5 text-sm text-fg-muted">
               <li>
-                <Link href="/#how-it-works" className="hover:text-cyan-400 transition-colors">
-                  How It Works
-                </Link>
+                <a
+                  href="mailto:shashibhushan27072002@gmail.com"
+                  className="inline-flex items-center gap-2.5 break-all transition-colors hover:text-fg"
+                >
+                  <Mail className="size-4 shrink-0 text-fg-subtle" aria-hidden="true" />
+                  shashibhushan27072002@gmail.com
+                </a>
               </li>
               <li>
-                <Link href="/analysis/new" className="hover:text-cyan-400 transition-colors">
-                  New Evaluation
-                </Link>
+                <a href="tel:+917060049677" className="inline-flex items-center gap-2.5 transition-colors hover:text-fg">
+                  <Phone className="size-4 shrink-0 text-fg-subtle" aria-hidden="true" />
+                  +91 7060049677
+                </a>
               </li>
-              <li>
-                <Link href="/privacy" className="hover:text-cyan-400 transition-colors">
-                  Privacy Policy
-                </Link>
-              </li>
-              <li>
-                <Link href="/terms" className="hover:text-cyan-400 transition-colors">
-                  Terms of Service
-                </Link>
-              </li>
-              <li>
-                <Link href="/refund" className="hover:text-cyan-400 transition-colors text-cyan-400">
-                  Cancellation & Refund
-                </Link>
-              </li>
-              <li>
-                <Link href="/contact" className="hover:text-cyan-400 transition-colors font-medium text-indigo-400">
-                  Contact Us
-                </Link>
+              <li className="inline-flex items-center gap-2.5">
+                <MapPin className="size-4 shrink-0 text-fg-subtle" aria-hidden="true" />
+                Haridwar, India
               </li>
             </ul>
           </div>
-
-          {/* Real Contact Details */}
-          <div className="md:col-span-4 space-y-3">
-            <h4 className="text-xs font-semibold uppercase tracking-wider text-white flex items-center gap-1.5">
-              <span className="h-1.5 w-1.5 rounded-full bg-cyan-400"></span>
-              Direct Contact & Support
-            </h4>
-            <div className="space-y-2.5 text-xs text-slate-300">
-              <a 
-                href="mailto:shashibhushan27072002@gmail.com" 
-                className="flex items-center gap-2.5 hover:text-cyan-400 transition-colors group"
-              >
-                <div className="p-1.5 rounded-md bg-slate-900 border border-slate-800 text-cyan-400 group-hover:border-cyan-500/30">
-                  <Mail className="h-3.5 w-3.5" />
-                </div>
-                <span>shashibhushan27072002@gmail.com</span>
-              </a>
-              <a 
-                href="tel:+917060049677" 
-                className="flex items-center gap-2.5 hover:text-cyan-400 transition-colors group"
-              >
-                <div className="p-1.5 rounded-md bg-slate-900 border border-slate-800 text-indigo-400 group-hover:border-indigo-500/30">
-                  <Phone className="h-3.5 w-3.5" />
-                </div>
-                <span>+91 7060049677</span>
-              </a>
-              <div className="flex items-center gap-2.5 text-slate-400">
-                <div className="p-1.5 rounded-md bg-slate-900 border border-slate-800 text-emerald-400">
-                  <MapPin className="h-3.5 w-3.5" />
-                </div>
-                <span>Haridwar, India</span>
-              </div>
-            </div>
-          </div>
         </div>
 
-        {/* Bottom Bar */}
-        <div className="pt-6 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-slate-500">
+        <div className="mt-10 flex flex-col gap-3 border-t border-border pt-6 text-xs text-fg-subtle sm:flex-row sm:items-center sm:justify-between">
           <p>© {new Date().getFullYear()} proofStack Technologies. All rights reserved.</p>
-          <div className="flex items-center gap-4">
-            <span className="flex items-center gap-1.5">
-              <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse"></span>
-              All Systems Operational
-            </span>
-          </div>
+          <p className="inline-flex items-center gap-2">
+            <span className="size-1.5 rounded-full bg-success-solid" aria-hidden="true" />
+            All Systems Operational
+          </p>
         </div>
       </div>
     </footer>

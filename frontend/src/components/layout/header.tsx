@@ -1,97 +1,255 @@
 "use client";
 
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { ChevronDown, CreditCard, LayoutDashboard, LogOut, Menu, Plus, X } from "lucide-react";
 import { useAuth } from "@/providers/providers";
-import { ShieldCheck, LogOut, LayoutDashboard, Sparkles } from "lucide-react";
+import type { User } from "@/types";
+import { cn } from "@/lib/utils";
+import { Logo } from "@/components/brand/logo";
+import { Badge } from "@/components/ui/badge";
+import { Button, buttonVariants } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/feedback";
+import { ThemeToggle } from "./theme-toggle";
+
+interface NavItem {
+  href: string;
+  label: string;
+}
+
+const marketingNav: NavItem[] = [
+  { href: "/#how-it-works", label: "How it works" },
+  { href: "/#evidence-dimensions", label: "Shortlist criteria" },
+  { href: "/billing", label: "Pricing" },
+];
+
+function getInitials(user: User | null) {
+  const source = user?.full_name?.trim() || user?.email || "";
+  const parts = source.split(/\s+/).filter(Boolean);
+  if (parts.length >= 2) return (parts[0][0] + parts[1][0]).toUpperCase();
+  return source.slice(0, 2).toUpperCase() || "?";
+}
 
 export function Header() {
   const { user, isAuthenticated, isLoading, logout } = useAuth();
   const pathname = usePathname();
-  const signInHref = pathname && pathname !== "/" && !pathname.startsWith("/login") && !pathname.startsWith("/register")
-    ? `/login?redirect=${encodeURIComponent(pathname)}`
-    : "/login";
+  const [mobileOpen, setMobileOpen] = useState(false);
+
+  const signInHref =
+    pathname && pathname !== "/" && !pathname.startsWith("/login") && !pathname.startsWith("/register")
+      ? `/login?redirect=${encodeURIComponent(pathname)}`
+      : "/login";
+
+  const showAccount = isAuthenticated || (isLoading && user);
+  const navItems: NavItem[] = showAccount ? [{ href: "/dashboard", label: "Dashboard" }, ...marketingNav] : marketingNav;
+  const isPro = user?.subscription_tier === "pro";
+  const closeMobile = () => setMobileOpen(false);
 
   return (
-    <header className="sticky top-0 z-50 w-full border-b border-slate-800/80 bg-slate-950/80 backdrop-blur-md">
-      <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-3.5 sm:px-6 lg:px-8">
-        <Link href="/" className="flex items-center gap-2.5 group">
-          <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-gradient-to-br from-indigo-500 to-violet-600 text-white shadow-lg shadow-indigo-500/25 transition-transform group-hover:scale-105">
-            <ShieldCheck className="h-5 w-5" />
-          </div>
-          <span className="text-xl font-bold tracking-tight text-white">
-            proof<span className="text-indigo-400">Stack</span>
-          </span>
-        </Link>
+    <header className="sticky top-0 z-40 w-full border-b border-border bg-bg/85 backdrop-blur-md supports-[backdrop-filter]:bg-bg/70">
+      <a
+        href="#main"
+        className="sr-only rounded-md bg-surface px-3 py-2 text-sm font-medium text-fg shadow-lg focus:not-sr-only focus:absolute focus:left-4 focus:top-3 focus:z-50"
+      >
+        Skip to content
+      </a>
+      <div className="mx-auto flex h-16 max-w-7xl items-center gap-6 px-4 sm:px-6 lg:px-8">
+        <Logo />
 
-        <nav className="hidden md:flex items-center gap-8 text-sm font-medium text-slate-300">
-          <Link href="/#how-it-works" className="hover:text-white transition-colors">
-            How It Works
-          </Link>
-          <Link href="/#evidence-dimensions" className="hover:text-white transition-colors">
-            Shortlist Criteria
-          </Link>
-          <Link href="/billing" className="hover:text-white transition-colors flex items-center gap-1">
-            <Sparkles className="h-3.5 w-3.5 text-cyan-400" />
-            Pricing & Billing
-          </Link>
-          {(isAuthenticated || (isLoading && user)) && (
-            <Link href="/dashboard" className="flex items-center gap-1.5 text-indigo-400 hover:text-indigo-300 transition-colors">
-              <LayoutDashboard className="h-4 w-4" />
-              Dashboard
-            </Link>
-          )}
+        <nav aria-label="Main" className="hidden items-center gap-1 md:flex">
+          {navItems.map((item) => {
+            const active = pathname === item.href;
+            return (
+              <Link
+                key={item.href}
+                href={item.href}
+                aria-current={active ? "page" : undefined}
+                className={cn(
+                  "rounded-md px-3 py-2 text-sm font-medium transition-colors",
+                  active ? "text-fg" : "text-fg-muted hover:text-fg"
+                )}
+              >
+                {item.label}
+              </Link>
+            );
+          })}
         </nav>
 
-        <div className="flex items-center gap-3">
-          {isLoading ? (
-            <div className="flex items-center gap-3 animate-pulse py-1">
-              <div className="h-6 w-20 rounded-full bg-slate-800/60 hidden sm:block" />
-              <div className="h-8 w-24 rounded-lg bg-slate-800/60" />
-            </div>
-          ) : isAuthenticated ? (
-            <div className="flex items-center gap-4">
-              <Link
-                href="/billing"
-                className={`hidden sm:inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase tracking-wide border ${
-                  user?.subscription_tier === "pro"
-                    ? "bg-gradient-to-r from-cyan-500 to-blue-600 text-white border-cyan-400/50 shadow-sm shadow-cyan-500/20"
-                    : "bg-slate-900 text-slate-300 border-slate-700 hover:border-slate-600"
-                }`}
-              >
-                {user?.subscription_tier === "pro" ? "⚡ Pro Plan" : "Free Plan"}
-              </Link>
-              <span className="hidden sm:inline-block text-xs text-slate-400">
-                Hi, <strong className="text-slate-200">{user?.full_name || "Candidate"}</strong>
-              </span>
+        <div className="ml-auto flex items-center gap-2">
+          <ThemeToggle />
 
-              <button
-                onClick={logout}
-                className="flex items-center gap-1.5 rounded-lg border border-slate-800 bg-slate-900/60 px-3 py-1.5 text-xs font-medium text-slate-300 hover:bg-slate-800 hover:text-white transition-all"
-              >
-                <LogOut className="h-3.5 w-3.5" />
-                Sign Out
-              </button>
-            </div>
-          ) : (
-            <div className="flex items-center gap-3">
-              <Link
-                href={signInHref}
-                className="rounded-lg px-3.5 py-1.5 text-sm font-medium text-slate-300 hover:text-white transition-colors"
-              >
-                Sign In
-              </Link>
-              <Link
-                href="/analysis/new"
-                className="flex items-center gap-1.5 rounded-lg bg-gradient-to-r from-indigo-500 to-violet-600 px-4 py-2 text-sm font-semibold text-white shadow-md shadow-indigo-500/20 hover:from-indigo-600 hover:to-violet-700 transition-all"
-              >
-                <Sparkles className="h-4 w-4" />
-                Check Resume Free
-              </Link>
-            </div>
-          )}
+          <div className="hidden items-center gap-2 md:flex">
+            {isLoading ? (
+              <Skeleton className="h-9 w-40 rounded-lg" />
+            ) : isAuthenticated ? (
+              <>
+                <Link href="/billing" className="rounded-md" aria-label={`Current plan: ${isPro ? "Pro" : "Free"}`}>
+                  <Badge tone={isPro ? "primary" : "neutral"}>{isPro ? "Pro plan" : "Free plan"}</Badge>
+                </Link>
+                <Link href="/analysis/new" className={buttonVariants({ size: "sm" })}>
+                  <Plus aria-hidden="true" />
+                  New evaluation
+                </Link>
+                <UserMenu user={user} initials={getInitials(user)} onLogout={logout} />
+              </>
+            ) : (
+              <>
+                <Link href={signInHref} className={buttonVariants({ variant: "ghost", size: "sm" })}>
+                  Sign in
+                </Link>
+                <Link href="/analysis/new" className={buttonVariants({ size: "sm" })}>
+                  Check resume free
+                </Link>
+              </>
+            )}
+          </div>
+
+          <Button
+            variant="ghost"
+            size="icon"
+            className="md:hidden"
+            onClick={() => setMobileOpen((open) => !open)}
+            aria-expanded={mobileOpen}
+            aria-controls="mobile-nav"
+            aria-label={mobileOpen ? "Close menu" : "Open menu"}
+          >
+            {mobileOpen ? <X /> : <Menu />}
+          </Button>
         </div>
       </div>
+
+      {mobileOpen && (
+        <div id="mobile-nav" className="border-t border-border bg-surface md:hidden">
+          <nav aria-label="Mobile" className="mx-auto flex max-w-7xl flex-col px-4 py-3 sm:px-6">
+            {navItems.map((item) => (
+              <Link
+                key={item.href}
+                href={item.href}
+                onClick={closeMobile}
+                aria-current={pathname === item.href ? "page" : undefined}
+                className="rounded-md px-3 py-2.5 text-sm font-medium text-fg-muted transition-colors hover:bg-surface-2 hover:text-fg aria-[current=page]:text-fg"
+              >
+                {item.label}
+              </Link>
+            ))}
+
+            <div className="mt-3 border-t border-border pt-3">
+              {isLoading ? (
+                <Skeleton className="h-10 w-full rounded-lg" />
+              ) : isAuthenticated ? (
+                <div className="flex flex-col gap-3">
+                  <div className="flex items-center justify-between gap-3 px-3">
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-medium text-fg">{user?.full_name || "Candidate"}</p>
+                      <p className="truncate text-xs text-fg-subtle">{user?.email}</p>
+                    </div>
+                    <Badge tone={isPro ? "primary" : "neutral"}>{isPro ? "Pro plan" : "Free plan"}</Badge>
+                  </div>
+                  <Link href="/analysis/new" onClick={closeMobile} className={buttonVariants({ fullWidth: true })}>
+                    <Plus aria-hidden="true" />
+                    New evaluation
+                  </Link>
+                  <Button variant="secondary" fullWidth onClick={logout}>
+                    <LogOut aria-hidden="true" />
+                    Sign out
+                  </Button>
+                </div>
+              ) : (
+                <div className="grid grid-cols-2 gap-3">
+                  <Link href={signInHref} onClick={closeMobile} className={buttonVariants({ variant: "secondary" })}>
+                    Sign in
+                  </Link>
+                  <Link href="/analysis/new" onClick={closeMobile} className={buttonVariants()}>
+                    Check resume free
+                  </Link>
+                </div>
+              )}
+            </div>
+          </nav>
+        </div>
+      )}
     </header>
+  );
+}
+
+interface UserMenuProps {
+  user: User | null;
+  initials: string;
+  onLogout: () => void;
+}
+
+function UserMenu({ user, initials, onLogout }: UserMenuProps) {
+  const [open, setOpen] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const buttonRef = useRef<HTMLButtonElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const handlePointer = (event: MouseEvent) => {
+      if (!containerRef.current?.contains(event.target as Node)) setOpen(false);
+    };
+    const handleKey = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setOpen(false);
+        buttonRef.current?.focus();
+      }
+    };
+    document.addEventListener("mousedown", handlePointer);
+    document.addEventListener("keydown", handleKey);
+    return () => {
+      document.removeEventListener("mousedown", handlePointer);
+      document.removeEventListener("keydown", handleKey);
+    };
+  }, [open]);
+
+  const itemClass =
+    "flex w-full items-center gap-2.5 rounded-md px-2.5 py-2 text-sm text-fg-muted transition-colors hover:bg-surface-2 hover:text-fg [&_svg]:size-4";
+
+  return (
+    <div ref={containerRef} className="relative">
+      <button
+        ref={buttonRef}
+        type="button"
+        onClick={() => setOpen((value) => !value)}
+        aria-expanded={open}
+        aria-controls="user-menu"
+        aria-label="Account menu"
+        className="flex items-center gap-1 rounded-full p-0.5 pr-1.5 text-fg-muted transition-colors hover:bg-surface-2 hover:text-fg"
+      >
+        <span className="flex size-8 items-center justify-center rounded-full bg-primary-soft text-xs font-semibold text-primary-text">
+          {initials}
+        </span>
+        <ChevronDown className={cn("size-4 transition-transform", open && "rotate-180")} aria-hidden="true" />
+      </button>
+
+      {open && (
+        <div
+          id="user-menu"
+          className="absolute right-0 top-full mt-2 w-64 animate-slide-up rounded-xl border border-border bg-surface p-1.5 shadow-lg"
+        >
+          <div className="border-b border-border px-2.5 pb-2.5 pt-1.5">
+            <p className="truncate text-sm font-medium text-fg">{user?.full_name || "Candidate"}</p>
+            <p className="truncate text-xs text-fg-subtle">{user?.email}</p>
+          </div>
+          <div className="flex flex-col py-1.5">
+            <Link href="/dashboard" className={itemClass} onClick={() => setOpen(false)}>
+              <LayoutDashboard aria-hidden="true" />
+              Dashboard
+            </Link>
+            <Link href="/billing" className={itemClass} onClick={() => setOpen(false)}>
+              <CreditCard aria-hidden="true" />
+              Plans &amp; billing
+            </Link>
+          </div>
+          <div className="border-t border-border pt-1.5">
+            <button type="button" className={itemClass} onClick={onLogout}>
+              <LogOut aria-hidden="true" />
+              Sign out
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
   );
 }

@@ -1,15 +1,43 @@
 "use client";
 
-import React, { useEffect, useState, Suspense } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { Suspense, useEffect, useState } from "react";
+import Link from "next/link";
+import { useSearchParams } from "next/navigation";
+import { ArrowRight, CheckCircle2, Loader2, XCircle } from "lucide-react";
 import { billingApi } from "@/lib/api";
 import { useAuth } from "@/providers/providers";
-import { CheckCircle2, XCircle, Loader2, Sparkles, ArrowRight } from "lucide-react";
-import Link from "next/link";
+import { Container, PageShell } from "@/components/layout/page";
+import { Badge } from "@/components/ui/badge";
+import { buttonVariants } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+
+function StatusIcon({ tone, children }: { tone: "primary" | "success" | "danger"; children: React.ReactNode }) {
+  const styles = {
+    primary: "bg-primary-soft text-primary-text",
+    success: "bg-success-soft text-success",
+    danger: "bg-danger-soft text-danger",
+  };
+  return (
+    <span className={`mx-auto flex size-14 items-center justify-center rounded-full ${styles[tone]} [&_svg]:size-7`}>
+      {children}
+    </span>
+  );
+}
+
+function VerifyingState({ title, description }: { title: string; description?: string }) {
+  return (
+    <div className="py-4" role="status">
+      <StatusIcon tone="primary">
+        <Loader2 className="animate-spin" aria-hidden="true" />
+      </StatusIcon>
+      <h1 className="mt-5 text-xl font-semibold text-fg">{title}</h1>
+      {description && <p className="mt-2 text-sm text-fg-muted">{description}</p>}
+    </div>
+  );
+}
 
 function BillingStatusContent() {
   const searchParams = useSearchParams();
-  const router = useRouter();
   const { refreshUser } = useAuth();
 
   const orderId = searchParams.get("order_id");
@@ -36,7 +64,7 @@ function BillingStatusContent() {
           setSuccess(false);
           setErrorMsg(`Payment status: ${response.data.status}. If you completed the payment, it may take a moment to process.`);
         }
-      } catch (err: any) {
+      } catch {
         setErrorMsg("Could not verify order status from server. Please check your billing page in a few minutes.");
       } finally {
         setVerifying(false);
@@ -46,88 +74,68 @@ function BillingStatusContent() {
     verifyStatus();
   }, [orderId, urlStatus, refreshUser]);
 
+  if (verifying) {
+    return <VerifyingState title="Verifying your subscription..." description="Synchronizing with the Cashfree payments server." />;
+  }
+
+  if (success) {
+    return (
+      <div className="animate-fade-in py-4">
+        <StatusIcon tone="success">
+          <CheckCircle2 aria-hidden="true" />
+        </StatusIcon>
+        <Badge tone="primary" className="mt-5">
+          Account upgraded
+        </Badge>
+        <h1 className="mt-3 text-2xl font-semibold tracking-tight text-fg">Welcome to Pro Intelligence!</h1>
+        <p className="mt-2 text-sm text-fg-muted">
+          Your payment was confirmed. You now have unlimited AI resume analyses, priority LLM queues, and full interview
+          history.
+        </p>
+        <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:justify-center">
+          <Link href="/dashboard" className={buttonVariants()}>
+            Go to dashboard
+            <ArrowRight aria-hidden="true" />
+          </Link>
+          <Link href="/billing" className={buttonVariants({ variant: "secondary" })}>
+            Billing info
+          </Link>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className="max-w-md w-full bg-slate-900/90 border border-slate-800 rounded-2xl p-8 shadow-2xl text-center space-y-6">
-      {verifying ? (
-        <div className="space-y-4 py-6">
-          <Loader2 className="w-12 h-12 animate-spin text-cyan-400 mx-auto" />
-          <h2 className="text-xl font-bold text-white">Verifying Subscription...</h2>
-          <p className="text-sm text-slate-400">
-            Synchronizing with Cashfree payments server...
-          </p>
-        </div>
-      ) : success ? (
-        <div className="space-y-6 py-4 animate-in fade-in zoom-in duration-500">
-          <div className="w-16 h-16 bg-cyan-500/10 border border-cyan-500/30 rounded-full flex items-center justify-center mx-auto text-cyan-400">
-            <CheckCircle2 className="w-10 h-10" />
-          </div>
-          <div className="space-y-2">
-            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-cyan-500/10 text-cyan-400 text-xs font-bold uppercase tracking-wider">
-              <Sparkles className="w-3.5 h-3.5" />
-              <span>Account Upgraded</span>
-            </div>
-            <h2 className="text-2xl font-extrabold text-white">Welcome to Pro Intelligence!</h2>
-            <p className="text-sm text-slate-300">
-              Your payment was confirmed. You now have unlimited AI resume analyses, priority LLM queues, and full interrogation history.
-            </p>
-          </div>
-
-          <div className="pt-4 flex flex-col sm:flex-row gap-3">
-            <Link
-              href="/dashboard"
-              className="flex-1 py-3 px-4 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white font-bold text-sm shadow-lg shadow-cyan-500/25 transition flex items-center justify-center gap-2"
-            >
-              <span>Go to Dashboard</span>
-              <ArrowRight className="w-4 h-4" />
-            </Link>
-            <Link
-              href="/billing"
-              className="py-3 px-4 rounded-xl bg-slate-800 border border-slate-700 hover:bg-slate-700 text-slate-300 font-semibold text-sm transition"
-            >
-              Billing Info
-            </Link>
-          </div>
-        </div>
-      ) : (
-        <div className="space-y-6 py-4">
-          <div className="w-16 h-16 bg-red-500/10 border border-red-500/30 rounded-full flex items-center justify-center mx-auto text-red-400">
-            <XCircle className="w-10 h-10" />
-          </div>
-          <div className="space-y-2">
-            <h2 className="text-xl font-bold text-white">Verification Incomplete</h2>
-            <p className="text-sm text-slate-400">
-              {errorMsg || "We couldn't confirm your subscription payment at this time."}
-            </p>
-          </div>
-
-          <div className="pt-4">
-            <Link
-              href="/billing"
-              className="w-full block py-3 px-4 rounded-xl bg-slate-800 border border-slate-700 hover:bg-slate-700 text-slate-200 font-semibold text-sm transition"
-            >
-              Return to Billing Page
-            </Link>
-          </div>
-        </div>
-      )}
+    <div className="animate-fade-in py-4">
+      <StatusIcon tone="danger">
+        <XCircle aria-hidden="true" />
+      </StatusIcon>
+      <h1 className="mt-5 text-xl font-semibold text-fg">Verification incomplete</h1>
+      <p className="mt-2 text-sm text-fg-muted">
+        {errorMsg || "We couldn't confirm your subscription payment at this time."}
+      </p>
+      <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:justify-center">
+        <Link href="/billing" className={buttonVariants()}>
+          Return to billing
+        </Link>
+        <Link href="/contact" className={buttonVariants({ variant: "secondary" })}>
+          Contact support
+        </Link>
+      </div>
     </div>
   );
 }
 
 export default function BillingStatusPage() {
   return (
-    <div className="min-h-screen bg-gradient-to-b from-slate-950 via-slate-900 to-slate-950 flex items-center justify-center p-4">
-      <Suspense
-        fallback={
-          <div className="max-w-md w-full bg-slate-900/90 border border-slate-800 rounded-2xl p-8 text-center space-y-4">
-            <Loader2 className="w-12 h-12 animate-spin text-cyan-400 mx-auto" />
-            <h2 className="text-xl font-bold text-white">Loading Verification...</h2>
-          </div>
-        }
-      >
-        <BillingStatusContent />
-      </Suspense>
-    </div>
+    <PageShell>
+      <Container size="narrow" className="flex justify-center py-16 sm:py-24">
+        <Card className="w-full max-w-md p-8 text-center">
+          <Suspense fallback={<VerifyingState title="Loading verification..." />}>
+            <BillingStatusContent />
+          </Suspense>
+        </Card>
+      </Container>
+    </PageShell>
   );
 }
-

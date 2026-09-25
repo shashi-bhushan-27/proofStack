@@ -127,7 +127,7 @@ export const jobDescriptionApi = {
 // Analysis API
 // ==========================================
 export const analysisApi = {
-  create: (data: { resume_id: string; job_description_id: string }) =>
+  create: (data: { resume_id: string; job_title: string; company_name?: string; job_description_text: string }) =>
     api.post("/analyses", data),
 
   list: () => api.get("/analyses"),

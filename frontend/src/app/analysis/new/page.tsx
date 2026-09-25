@@ -1,37 +1,62 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useEffect, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Header } from "@/components/layout/header";
-import { Footer } from "@/components/layout/footer";
+import {
+  AlertCircle,
+  ArrowLeft,
+  ArrowRight,
+  Briefcase,
+  Building2,
+  Check,
+  CheckCircle2,
+  FileText,
+  Loader2,
+  Sparkles,
+  UploadCloud,
+} from "lucide-react";
 import { resumeApi, analysisApi } from "@/lib/api";
 import { useAuth } from "@/providers/providers";
-import { formatFileSize, getStatusInfo } from "@/lib/utils";
-import {
-  UploadCloud,
-  FileText,
-  CheckCircle2,
-  AlertCircle,
-  ArrowRight,
-  ArrowLeft,
-  Sparkles,
-  Loader2,
-  Building2,
-  Briefcase,
-} from "lucide-react";
+import { useBrowserValue } from "@/lib/hooks";
+import { ANALYSIS_STAGES, cn, formatFileSize, getErrorMessage, getStatusInfo } from "@/lib/utils";
+import { Container, PageShell } from "@/components/layout/page";
+import { Alert } from "@/components/ui/alert";
+import { Badge } from "@/components/ui/badge";
+import { Button, buttonVariants } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { Field, fieldErrorId, fieldHintId } from "@/components/ui/field";
+import { Progress, Skeleton } from "@/components/ui/feedback";
+import { Input, Textarea } from "@/components/ui/input";
+
+type Step = 1 | 2 | 3 | 4;
+
+const WIZARD_STEPS: { step: Step; label: string }[] = [
+  { step: 1, label: "Upload resume" },
+  { step: 2, label: "Target job" },
+  { step: 3, label: "Review" },
+  { step: 4, label: "Analysis" },
+];
+
+const FREE_DAILY_LIMIT = 3;
+const MIN_JD_LENGTH = 100;
+
+function readGuestCount() {
+  try {
+    return localStorage.getItem("guest_analyses_count");
+  } catch {
+    return null;
+  }
+}
 
 export default function NewAnalysisWizard() {
   const router = useRouter();
-  const { user, isAuthenticated, refreshUser } = useAuth();
-  const [step, setStep] = useState<1 | 2 | 3 | 4>(1);
+  const { user, isAuthenticated, isLoading: isAuthLoading, refreshUser } = useAuth();
+  const [step, setStep] = useState<Step>(1);
 
-  const [guestCount, setGuestCount] = useState(0);
-  useEffect(() => {
-    if (typeof window !== "undefined") {
-      const count = parseInt(localStorage.getItem("guest_analyses_count") || "0", 10);
-      setGuestCount(count);
-    }
-  }, []);
+  const storedGuestCount = useBrowserValue(readGuestCount, null);
+  const [guestCountOverride, setGuestCountOverride] = useState<number | null>(null);
+  const guestCount = guestCountOverride ?? parseInt(storedGuestCount || "0", 10);
 
   useEffect(() => {
     if (isAuthenticated) {
@@ -40,20 +65,21 @@ export default function NewAnalysisWizard() {
   }, [isAuthenticated, refreshUser]);
 
   const isFreeLimitReached =
-    (isAuthenticated && user?.subscription_tier === "free" && (user?.daily_analyses_count ?? 0) >= 3) ||
-    (!isAuthenticated && guestCount >= 3);
+    (isAuthenticated && user?.subscription_tier === "free" && (user?.daily_analyses_count ?? 0) >= FREE_DAILY_LIMIT) ||
+    (!isAuthenticated && guestCount >= FREE_DAILY_LIMIT);
 
   // Step 1 State: Resume upload
   const [file, setFile] = useState<File | null>(null);
   const [isUploading, setIsUploading] = useState(false);
   const [resumeId, setResumeId] = useState<string | null>(null);
   const [uploadError, setUploadError] = useState<string | null>(null);
+  const [isDragging, setIsDragging] = useState(false);
 
   // Step 2 State: Job Description
   const [jobTitle, setJobTitle] = useState("");
   const [companyName, setCompanyName] = useState("");
   const [jdText, setJdText] = useState("");
-  const [jdError, setJdError] = useState<string | null>(null);
+  const [jdError, setJdError] = useState<{ field: "jobTitle" | "jd"; message: string } | null>(null);
 
   // Step 3 & 4 State: Analysis creation & live polling
   const [analysisId, setAnalysisId] = useState<string | null>(null);
@@ -80,21 +106,29 @@ export default function NewAnalysisWizard() {
       const res = await resumeApi.upload(selectedFile);
       setResumeId(res.data.id);
       setStep(2);
-    } catch (err: any) {
-      setUploadError(err?.detail || "Failed to upload resume. Please try again.");
+    } catch (err) {
+      setUploadError(getErrorMessage(err, "Failed to upload resume. Please try again."));
     } finally {
       setIsUploading(false);
     }
   };
 
+  const handleDrop = (e: React.DragEvent<HTMLLabelElement>) => {
+    e.preventDefault();
+    setIsDragging(false);
+    if (isUploading) return;
+    const dropped = e.dataTransfer.files?.[0];
+    if (dropped) handleFileUpload(dropped);
+  };
+
   // Validate Step 2 and proceed to Step 3
   const handleProceedToReview = () => {
     if (!jobTitle.trim() || jobTitle.trim().length < 2) {
-      setJdError("Please enter a valid job title (at least 2 characters).");
+      setJdError({ field: "jobTitle", message: "Please enter a valid job title (at least 2 characters)." });
       return;
     }
-    if (!jdText.trim() || jdText.trim().length < 100) {
-      setJdError("Please paste a complete job description (at least 100 characters).");
+    if (!jdText.trim() || jdText.trim().length < MIN_JD_LENGTH) {
+      setJdError({ field: "jd", message: "Please paste a complete job description (at least 100 characters)." });
       return;
     }
     setJdError(null);
@@ -113,13 +147,13 @@ export default function NewAnalysisWizard() {
         job_title: jobTitle.trim(),
         company_name: companyName.trim() || undefined,
         job_description_text: jdText.trim(),
-      } as any);
+      });
 
       const createdId = res.data.analysis.id;
       if (res.data.guest_token) {
         localStorage.setItem(`guest_token_${createdId}`, res.data.guest_token);
         const newCount = guestCount + 1;
-        setGuestCount(newCount);
+        setGuestCountOverride(newCount);
         localStorage.setItem("guest_analyses_count", newCount.toString());
       } else if (isAuthenticated) {
         refreshUser();
@@ -127,8 +161,8 @@ export default function NewAnalysisWizard() {
       setAnalysisId(createdId);
       setAnalysisStatus(res.data.analysis.status || "pending");
       setStep(4);
-    } catch (err: any) {
-      setAnalysisError(err?.detail || "Failed to start analysis. Please try again.");
+    } catch (err) {
+      setAnalysisError(getErrorMessage(err, "Failed to start analysis. Please try again."));
     } finally {
       setIsSubmitting(false);
     }
@@ -139,8 +173,6 @@ export default function NewAnalysisWizard() {
     if (step !== 4 || !analysisId) return;
 
     const token = localStorage.getItem(`guest_token_${analysisId}`);
-    const headers: Record<string, string> = {};
-    if (token) headers.Authorization = `Bearer ${token}`;
 
     const interval = setInterval(async () => {
       try {
@@ -166,341 +198,466 @@ export default function NewAnalysisWizard() {
   }, [step, analysisId, router]);
 
   const currentStepInfo = getStatusInfo(analysisStatus);
+  const progressPercent = Math.round(((currentStepInfo.step + 1) / 8) * 100);
+  const jdLength = jdText.trim().length;
 
   return (
-    <div className="flex min-h-screen flex-col bg-[#020617] text-white">
-      <Header />
+    <PageShell>
+      <Container size="narrow" className="py-10 sm:py-14">
+        <div className="text-center">
+          <h1 className="text-2xl font-semibold tracking-tight text-fg sm:text-3xl">Check your resume fit</h1>
+          <p className="mx-auto mt-2 max-w-xl text-sm text-fg-muted sm:text-base">
+            Upload your resume and paste your target job description to get your shortlist score and see which skills
+            need stronger evidence.
+          </p>
+        </div>
 
-      <main className="flex-1 py-12 px-4 sm:px-6 lg:px-8">
-        <div className="mx-auto max-w-3xl">
-          {/* Progress Header */}
-          <div className="mb-10 text-center">
-            <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">
-              Check Your Resume Fit &amp; Build Evidence
-            </h1>
-            <p className="mt-2 text-sm text-slate-400">
-              Upload your resume PDF and paste your target job description to check your shortlist score and strengthen your skills.
-            </p>
+        {!isAuthLoading && !isFreeLimitReached && (
+          <QuotaNote
+            isAuthenticated={isAuthenticated}
+            tier={user?.subscription_tier}
+            used={isAuthenticated ? (user?.daily_analyses_count ?? 0) : guestCount}
+          />
+        )}
 
-            {/* Step indicator pills */}
-            <div className="mt-6 flex items-center justify-center gap-2 sm:gap-4">
-              {[
-                { s: 1, label: "1. Upload Resume" },
-                { s: 2, label: "2. Target Job" },
-                { s: 3, label: "3. Review & Start" },
-                { s: 4, label: "4. Live Analysis" },
-              ].map((item) => (
-                <div
-                  key={item.s}
-                  className={`flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold transition-colors ${
-                    step === item.s
-                      ? "bg-indigo-600 text-white border border-indigo-500"
-                      : step > item.s
-                      ? "bg-emerald-500/20 text-emerald-300 border border-emerald-500/30"
-                      : "bg-slate-900 text-slate-500 border border-slate-800"
-                  }`}
-                >
-                  {step > item.s ? <CheckCircle2 className="h-3.5 w-3.5" /> : <span>{item.s}</span>}
-                  <span className="hidden sm:inline">{item.label.split(". ")[1]}</span>
-                </div>
-              ))}
-            </div>
-          </div>
+        <Stepper current={step} />
 
-          {isFreeLimitReached ? (
-            <div className="rounded-2xl border border-amber-500/30 bg-gradient-to-br from-slate-900 via-slate-900 to-amber-950/30 p-8 sm:p-10 text-center shadow-2xl space-y-6 animate-fade-in">
-              <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-amber-500/10 border border-amber-500/30">
-                <Sparkles className="h-8 w-8 text-amber-400" />
+        <div className="mt-8">
+          {isAuthLoading ? (
+            <Card className="p-6">
+              <Skeleton className="h-5 w-48" />
+              <Skeleton className="mt-3 h-4 w-72" />
+              <Skeleton className="mt-6 h-48 w-full rounded-xl" />
+            </Card>
+          ) : isFreeLimitReached ? (
+            <Card className="animate-fade-in px-6 py-10 text-center sm:px-10">
+              <div className="mx-auto flex size-12 items-center justify-center rounded-xl bg-warning-soft text-warning">
+                <Sparkles className="size-6" aria-hidden="true" />
               </div>
-              <div className="space-y-2">
-                <span className="rounded-full bg-amber-500/10 px-3 py-1 text-xs font-bold uppercase tracking-wider text-amber-400 border border-amber-500/20">
-                  Daily Limit Reached (3/3)
-                </span>
-                <h2 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-white">
-                  You&apos;ve Used All 3 Free Resume Checks Today
-                </h2>
-                <p className="max-w-md mx-auto text-sm text-slate-300 leading-relaxed">
-                  Upgrade to Pro to instantly unlock unlimited resume checks, deep STAR-bullet interview coaching, and priority evidence generation.
-                </p>
+              <Badge tone="warning" className="mt-5">
+                Daily limit reached ({FREE_DAILY_LIMIT}/{FREE_DAILY_LIMIT})
+              </Badge>
+              <h2 className="mt-3 text-xl font-semibold text-fg">You&apos;ve used all 3 free resume checks today</h2>
+              <p className="mx-auto mt-2 max-w-md text-sm text-fg-muted">
+                Upgrade to Pro to unlock unlimited resume checks, deep STAR-bullet interview coaching, and priority
+                evidence generation.
+              </p>
+              <div className="mt-6 flex flex-col justify-center gap-3 sm:flex-row">
+                <Link href="/billing" className={buttonVariants()}>
+                  <Sparkles aria-hidden="true" />
+                  Upgrade to Pro
+                </Link>
+                <Link href="/dashboard" className={buttonVariants({ variant: "secondary" })}>
+                  View my past checks
+                </Link>
               </div>
-
-              <div className="pt-4 flex flex-col sm:flex-row items-center justify-center gap-4">
-                <button
-                  onClick={() => router.push("/billing")}
-                  className="w-full sm:w-auto flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-indigo-600 via-indigo-500 to-purple-600 px-8 py-3.5 text-sm font-bold text-white shadow-lg shadow-indigo-500/25 hover:opacity-95 transition-all"
-                >
-                  <Sparkles className="h-4 w-4" /> Upgrade to Pro Now
-                </button>
-                <button
-                  onClick={() => router.push("/dashboard")}
-                  className="w-full sm:w-auto rounded-xl border border-slate-700 bg-slate-900 px-6 py-3.5 text-sm font-semibold text-slate-300 hover:bg-slate-800 transition-colors"
-                >
-                  View My Past Checks
-                </button>
-              </div>
-            </div>
+            </Card>
           ) : (
             <>
               {/* STEP 1: Upload Resume */}
               {step === 1 && (
-            <div className="rounded-2xl border border-slate-800 bg-slate-900/50 p-6 sm:p-8 shadow-xl backdrop-blur-md animate-fade-in">
-              <h2 className="text-lg font-bold text-white mb-2">Upload Your Resume (PDF)</h2>
-              <p className="text-xs text-slate-400 mb-6">
-                We analyze your work history and project sections to check your evidence strength.
-              </p>
-
-              <label className="flex flex-col items-center justify-center rounded-xl border-2 border-dashed border-slate-700 bg-slate-950/60 p-10 text-center hover:border-indigo-500 hover:bg-slate-950/80 cursor-pointer transition-all">
-                <input
-                  type="file"
-                  accept=".pdf,application/pdf"
-                  className="hidden"
-                  onChange={(e) => {
-                    if (e.target.files && e.target.files[0]) {
-                      handleFileUpload(e.target.files[0]);
-                    }
-                  }}
-                  disabled={isUploading}
-                />
-                <div className="p-4 rounded-full bg-indigo-500/10 text-indigo-400 mb-4">
-                  {isUploading ? (
-                    <Loader2 className="h-8 w-8 animate-spin" />
-                  ) : (
-                    <UploadCloud className="h-8 w-8" />
-                  )}
-                </div>
-                <p className="text-sm font-semibold text-slate-200">
-                  {isUploading ? "Uploading & extracting text..." : "Click or drag your PDF resume here"}
-                </p>
-                <p className="mt-1 text-xs text-slate-500">Max size: 10 MB. PDF files only.</p>
-              </label>
-
-              {uploadError && (
-                <div className="mt-4 flex items-center gap-2 rounded-lg bg-rose-500/10 border border-rose-500/30 p-3.5 text-xs text-rose-300">
-                  <AlertCircle className="h-4 w-4 flex-shrink-0" />
-                  <span>{uploadError}</span>
-                </div>
-              )}
-
-              {resumeId && file && !isUploading && (
-                <div className="mt-6 flex items-center justify-between rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-4">
-                  <div className="flex items-center gap-3">
-                    <FileText className="h-6 w-6 text-emerald-400" />
-                    <div>
-                      <p className="text-sm font-medium text-emerald-200">{file.name}</p>
-                      <p className="text-xs text-emerald-400/80">{formatFileSize(file.size)} • Extracted ready</p>
-                    </div>
-                  </div>
-                  <button
-                    onClick={() => setStep(2)}
-                    className="flex items-center gap-1.5 rounded-lg bg-emerald-600 px-4 py-2 text-xs font-semibold text-white hover:bg-emerald-500 transition-colors"
-                  >
-                    Next Step <ArrowRight className="h-3.5 w-3.5" />
-                  </button>
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* STEP 2: Job Description */}
-          {step === 2 && (
-            <div className="rounded-2xl border border-slate-800 bg-slate-900/50 p-6 sm:p-8 shadow-xl backdrop-blur-md animate-fade-in">
-              <h2 className="text-lg font-bold text-white mb-2">Target Job Description Details</h2>
-              <p className="text-xs text-slate-400 mb-6">
-                Paste the exact job description so our AI coach can match your experience to what recruiters are looking for.
-              </p>
-
-              <div className="space-y-4">
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-xs font-semibold text-slate-300 mb-1.5">
-                      Job Title <span className="text-rose-400">*</span>
-                    </label>
-                    <div className="relative">
-                      <Briefcase className="absolute left-3 top-2.5 h-4 w-4 text-slate-500" />
+                <Card className="animate-fade-in">
+                  <CardHeader>
+                    <CardTitle>Upload your resume</CardTitle>
+                    <CardDescription>
+                      We analyze your work history and project sections to check how strongly each skill is evidenced.
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <label
+                      onDragOver={(e) => {
+                        e.preventDefault();
+                        if (!isUploading) setIsDragging(true);
+                      }}
+                      onDragLeave={() => setIsDragging(false)}
+                      onDrop={handleDrop}
+                      className={cn(
+                        "flex cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed px-6 py-12 text-center transition-colors focus-within:border-ring focus-within:bg-primary-soft/40",
+                        isDragging ? "border-primary bg-primary-soft" : "border-border-strong bg-surface-2/50 hover:border-fg-subtle hover:bg-surface-2",
+                        isUploading && "pointer-events-none"
+                      )}
+                    >
                       <input
-                        type="text"
-                        value={jobTitle}
-                        onChange={(e) => setJobTitle(e.target.value)}
-                        placeholder="e.g. Senior Python / ML Engineer"
-                        className="w-full rounded-lg border border-slate-700 bg-slate-950 py-2 pl-9 pr-3 text-sm text-white placeholder-slate-500 focus:border-indigo-500 focus:outline-none"
+                        type="file"
+                        accept=".pdf,application/pdf"
+                        className="sr-only"
+                        onChange={(e) => {
+                          if (e.target.files && e.target.files[0]) {
+                            handleFileUpload(e.target.files[0]);
+                          }
+                          e.target.value = "";
+                        }}
+                        disabled={isUploading}
+                        aria-describedby="resume-upload-hint"
                       />
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-semibold text-slate-300 mb-1.5">
-                      Company Name (Optional)
+                      <span className="flex size-12 items-center justify-center rounded-full border border-border bg-surface text-primary-text shadow-xs">
+                        {isUploading ? (
+                          <Loader2 className="size-6 animate-spin" aria-hidden="true" />
+                        ) : (
+                          <UploadCloud className="size-6" aria-hidden="true" />
+                        )}
+                      </span>
+                      <span className="mt-4 text-sm font-medium text-fg">
+                        {isUploading ? (
+                          "Uploading & extracting text..."
+                        ) : (
+                          <>
+                            <span className="text-primary-text">Click to upload</span> or drag and drop your resume
+                          </>
+                        )}
+                      </span>
+                      <span id="resume-upload-hint" className="mt-1 text-xs text-fg-subtle">
+                        PDF only, up to 10 MB
+                      </span>
                     </label>
-                    <div className="relative">
-                      <Building2 className="absolute left-3 top-2.5 h-4 w-4 text-slate-500" />
-                      <input
-                        type="text"
-                        value={companyName}
-                        onChange={(e) => setCompanyName(e.target.value)}
-                        placeholder="e.g. proofStack AI"
-                        className="w-full rounded-lg border border-slate-700 bg-slate-950 py-2 pl-9 pr-3 text-sm text-white placeholder-slate-500 focus:border-indigo-500 focus:outline-none"
-                      />
+
+                    {uploadError && <Alert className="mt-4">{uploadError}</Alert>}
+
+                    {resumeId && file && !isUploading && (
+                      <div className="mt-4 flex flex-col gap-3 rounded-lg border border-success-border bg-success-soft p-4 sm:flex-row sm:items-center sm:justify-between">
+                        <div className="flex min-w-0 items-center gap-3">
+                          <FileText className="size-5 shrink-0 text-success" aria-hidden="true" />
+                          <div className="min-w-0">
+                            <p className="truncate text-sm font-medium text-fg">{file.name}</p>
+                            <p className="text-xs text-fg-muted">{formatFileSize(file.size)} · Text extracted and ready</p>
+                          </div>
+                        </div>
+                        <Button size="sm" onClick={() => setStep(2)}>
+                          Continue
+                          <ArrowRight aria-hidden="true" />
+                        </Button>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              )}
+
+              {/* STEP 2: Job Description */}
+              {step === 2 && (
+                <Card className="animate-fade-in">
+                  <CardHeader>
+                    <CardTitle>Target job details</CardTitle>
+                    <CardDescription>
+                      Paste the exact job description so our AI coach can match your experience to what recruiters are
+                      looking for.
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="flex flex-col gap-5">
+                    <div className="grid gap-5 sm:grid-cols-2">
+                      <Field
+                        label="Job title"
+                        htmlFor="job-title"
+                        required
+                        error={jdError?.field === "jobTitle" ? jdError.message : undefined}
+                      >
+                        <Input
+                          id="job-title"
+                          icon={<Briefcase />}
+                          value={jobTitle}
+                          onChange={(e) => setJobTitle(e.target.value)}
+                          placeholder="e.g. Senior Python / ML Engineer"
+                          aria-invalid={jdError?.field === "jobTitle" || undefined}
+                          aria-describedby={jdError?.field === "jobTitle" ? fieldErrorId("job-title") : undefined}
+                        />
+                      </Field>
+                      <Field label="Company name" htmlFor="company-name" optional>
+                        <Input
+                          id="company-name"
+                          icon={<Building2 />}
+                          value={companyName}
+                          onChange={(e) => setCompanyName(e.target.value)}
+                          placeholder="e.g. proofStack AI"
+                        />
+                      </Field>
                     </div>
-                  </div>
-                </div>
 
-                <div>
-                  <label className="block text-xs font-semibold text-slate-300 mb-1.5">
-                    Job Description Text <span className="text-rose-400">*</span>
-                  </label>
-                  <textarea
-                    rows={8}
-                    value={jdText}
-                    onChange={(e) => setJdText(e.target.value)}
-                    placeholder="Paste full job description including requirements, qualifications, and responsibilities here..."
-                    className="w-full rounded-lg border border-slate-700 bg-slate-950 p-3 text-sm text-white placeholder-slate-500 focus:border-indigo-500 focus:outline-none font-mono"
-                  />
-                  <div className="mt-1 text-right text-xs text-slate-500">
-                    {jdText.length} characters (at least 100 recommended)
-                  </div>
-                </div>
-              </div>
-
-              {jdError && (
-                <div className="mt-4 flex items-center gap-2 rounded-lg bg-rose-500/10 border border-rose-500/30 p-3.5 text-xs text-rose-300">
-                  <AlertCircle className="h-4 w-4 flex-shrink-0" />
-                  <span>{jdError}</span>
-                </div>
+                    <Field
+                      label="Job description"
+                      htmlFor="job-description"
+                      required
+                      error={jdError?.field === "jd" ? jdError.message : undefined}
+                      hint={
+                        <span className="flex justify-between gap-3">
+                          <span>Include requirements, qualifications, and responsibilities.</span>
+                          <span className={cn("shrink-0 tabular-nums", jdLength >= MIN_JD_LENGTH && "text-success")}>
+                            {jdLength >= MIN_JD_LENGTH
+                              ? `${jdText.length.toLocaleString()} characters`
+                              : `${MIN_JD_LENGTH - jdLength} more characters needed`}
+                          </span>
+                        </span>
+                      }
+                    >
+                      <Textarea
+                        id="job-description"
+                        rows={10}
+                        value={jdText}
+                        onChange={(e) => setJdText(e.target.value)}
+                        placeholder="Paste the full job description here..."
+                        aria-invalid={jdError?.field === "jd" || undefined}
+                        aria-describedby={jdError?.field === "jd" ? fieldErrorId("job-description") : fieldHintId("job-description")}
+                      />
+                    </Field>
+                  </CardContent>
+                  <CardFooter className="justify-between">
+                    <Button variant="ghost" onClick={() => setStep(1)}>
+                      <ArrowLeft aria-hidden="true" />
+                      Back
+                    </Button>
+                    <Button onClick={handleProceedToReview}>
+                      Review summary
+                      <ArrowRight aria-hidden="true" />
+                    </Button>
+                  </CardFooter>
+                </Card>
               )}
 
-              <div className="mt-6 flex items-center justify-between pt-4 border-t border-slate-800">
-                <button
-                  onClick={() => setStep(1)}
-                  className="flex items-center gap-1.5 rounded-lg border border-slate-800 bg-slate-900 px-4 py-2 text-xs font-semibold text-slate-300 hover:bg-slate-800 transition-colors"
-                >
-                  <ArrowLeft className="h-3.5 w-3.5" /> Back
-                </button>
-                <button
-                  onClick={handleProceedToReview}
-                  className="flex items-center gap-1.5 rounded-lg bg-indigo-600 px-5 py-2.5 text-xs font-semibold text-white hover:bg-indigo-500 transition-colors"
-                >
-                  Review Summary <ArrowRight className="h-3.5 w-3.5" />
-                </button>
-              </div>
-            </div>
-          )}
+              {/* STEP 3: Review Input */}
+              {step === 3 && (
+                <Card className="animate-fade-in">
+                  <CardHeader>
+                    <CardTitle>Review &amp; start</CardTitle>
+                    <CardDescription>
+                      Check your resume and target job details before launching the 7-stage AI review pipeline.
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <dl className="divide-y divide-border rounded-lg border border-border text-sm">
+                      <ReviewRow label="Resume" onEdit={() => setStep(1)} editLabel="Change resume" disabled={isSubmitting}>
+                        <span className="inline-flex min-w-0 items-center gap-2">
+                          <FileText className="size-4 shrink-0 text-fg-subtle" aria-hidden="true" />
+                          <span className="truncate">{file?.name || "Uploaded PDF"}</span>
+                        </span>
+                      </ReviewRow>
+                      <ReviewRow label="Target role" onEdit={() => setStep(2)} editLabel="Edit job details" disabled={isSubmitting}>
+                        {jobTitle}
+                      </ReviewRow>
+                      {companyName && <ReviewRow label="Company">{companyName}</ReviewRow>}
+                      <div className="px-4 py-3">
+                        <dt className="text-fg-muted">Job description</dt>
+                        <dd className="mt-2 line-clamp-4 whitespace-pre-line rounded-md bg-surface-2 px-3 py-2.5 text-xs leading-relaxed text-fg-muted">
+                          {jdText}
+                        </dd>
+                      </div>
+                    </dl>
 
-          {/* STEP 3: Review Input */}
-          {step === 3 && (
-            <div className="rounded-2xl border border-slate-800 bg-slate-900/50 p-6 sm:p-8 shadow-xl backdrop-blur-md animate-fade-in">
-              <h2 className="text-lg font-bold text-white mb-2">Review &amp; Check Your Resume</h2>
-              <p className="text-xs text-slate-400 mb-6">
-                Verify your resume and target job details before launching our 7-stage AI review pipeline.
-              </p>
-
-              <div className="space-y-4 rounded-xl border border-slate-800 bg-slate-950/60 p-5 text-sm">
-                <div className="flex justify-between py-2 border-b border-slate-800/80">
-                  <span className="text-slate-400">Resume File:</span>
-                  <span className="font-semibold text-indigo-300">{file?.name || "Uploaded PDF"}</span>
-                </div>
-                <div className="flex justify-between py-2 border-b border-slate-800/80">
-                  <span className="text-slate-400">Target Role:</span>
-                  <span className="font-semibold text-white">{jobTitle}</span>
-                </div>
-                {companyName && (
-                  <div className="flex justify-between py-2 border-b border-slate-800/80">
-                    <span className="text-slate-400">Company:</span>
-                    <span className="font-semibold text-white">{companyName}</span>
-                  </div>
-                )}
-                <div className="py-2">
-                  <span className="text-slate-400 block mb-1">Job Description Snippet:</span>
-                  <p className="text-xs text-slate-300 line-clamp-3 bg-slate-900 p-2.5 rounded border border-slate-800/80 font-mono">
-                    {jdText}
-                  </p>
-                </div>
-              </div>
-
-              {analysisError && (
-                <div className="mt-4 flex items-center gap-2 rounded-lg bg-rose-500/10 border border-rose-500/30 p-3.5 text-xs text-rose-300">
-                  <AlertCircle className="h-4 w-4 flex-shrink-0" />
-                  <span>{analysisError}</span>
-                </div>
+                    {analysisError && <Alert className="mt-4">{analysisError}</Alert>}
+                  </CardContent>
+                  <CardFooter className="justify-between">
+                    <Button variant="ghost" onClick={() => setStep(2)} disabled={isSubmitting}>
+                      <ArrowLeft aria-hidden="true" />
+                      Edit job details
+                    </Button>
+                    <Button onClick={handleStartAnalysis} isLoading={isSubmitting} loadingText="Starting analysis...">
+                      <Sparkles aria-hidden="true" />
+                      Start AI resume check
+                    </Button>
+                  </CardFooter>
+                </Card>
               )}
 
-              <div className="mt-6 flex items-center justify-between pt-4 border-t border-slate-800">
-                <button
-                  onClick={() => setStep(2)}
-                  disabled={isSubmitting}
-                  className="flex items-center gap-1.5 rounded-lg border border-slate-800 bg-slate-900 px-4 py-2 text-xs font-semibold text-slate-300 hover:bg-slate-800 transition-colors disabled:opacity-50"
-                >
-                  <ArrowLeft className="h-3.5 w-3.5" /> Edit JD
-                </button>
-                <button
-                  onClick={handleStartAnalysis}
-                  disabled={isSubmitting}
-                  className="flex items-center gap-2 rounded-xl bg-gradient-to-r from-indigo-500 to-violet-600 px-6 py-3 text-sm font-bold text-white shadow-lg shadow-indigo-500/25 hover:from-indigo-600 hover:to-violet-700 transition-all disabled:opacity-50"
-                >
-                  {isSubmitting ? (
-                    <>
-                      <Loader2 className="h-4 w-4 animate-spin" /> Checking Resume...
-                    </>
-                  ) : (
-                    <>
-                      <Sparkles className="h-4 w-4" /> Start AI Resume Check
-                    </>
+              {/* STEP 4: Live Polling */}
+              {step === 4 && (
+                <Card className="animate-fade-in p-6 sm:p-10">
+                  <div className="flex flex-col items-center text-center" aria-live="polite">
+                    <span
+                      className={cn(
+                        "flex size-14 items-center justify-center rounded-full",
+                        analysisStatus === "completed"
+                          ? "bg-success-soft text-success"
+                          : analysisStatus === "failed"
+                            ? "bg-danger-soft text-danger"
+                            : "bg-primary-soft text-primary-text"
+                      )}
+                    >
+                      {analysisStatus === "completed" ? (
+                        <CheckCircle2 className="size-7" aria-hidden="true" />
+                      ) : analysisStatus === "failed" ? (
+                        <AlertCircle className="size-7" aria-hidden="true" />
+                      ) : (
+                        <Loader2 className="size-7 animate-spin" aria-hidden="true" />
+                      )}
+                    </span>
+                    <h2 className="mt-5 text-xl font-semibold text-fg">
+                      {analysisStatus === "completed"
+                        ? "Evaluation complete! Redirecting..."
+                        : analysisStatus === "failed"
+                          ? "Analysis failed"
+                          : "Analyzing your resume evidence"}
+                    </h2>
+                    <p className="mt-1.5 text-sm text-fg-muted">{currentStepInfo.label}</p>
+                  </div>
+
+                  {analysisStatus !== "failed" && (
+                    <div className="mx-auto mt-8 max-w-md">
+                      <div className="mb-2 flex justify-between text-xs text-fg-subtle">
+                        <span>Stage {Math.max(1, currentStepInfo.step)} of 7</span>
+                        <span className="tabular-nums">{currentStepInfo.step >= 7 ? "100%" : `${progressPercent}%`}</span>
+                      </div>
+                      <Progress value={currentStepInfo.step >= 7 ? 100 : progressPercent} label="Analysis progress" />
+
+                      <ol className="mt-6 space-y-3">
+                        {ANALYSIS_STAGES.map((stage, index) => {
+                          const stageNumber = index + 1;
+                          const isDone = currentStepInfo.step > stageNumber;
+                          const isActive = currentStepInfo.step === stageNumber;
+                          return (
+                            <li key={stage.status} className="flex items-center gap-3 text-sm">
+                              <span
+                                className={cn(
+                                  "flex size-5 shrink-0 items-center justify-center rounded-full border",
+                                  isDone && "border-success-solid bg-success-solid text-white",
+                                  isActive && "border-primary text-primary-text",
+                                  !isDone && !isActive && "border-border-strong"
+                                )}
+                                aria-hidden="true"
+                              >
+                                {isDone ? (
+                                  <Check className="size-3" strokeWidth={3} />
+                                ) : isActive ? (
+                                  <Loader2 className="size-3 animate-spin" />
+                                ) : null}
+                              </span>
+                              <span className={cn(isDone ? "text-fg-muted" : isActive ? "font-medium text-fg" : "text-fg-subtle")}>
+                                {stage.label}
+                              </span>
+                              <span className="sr-only">{isDone ? "(done)" : isActive ? "(in progress)" : "(pending)"}</span>
+                            </li>
+                          );
+                        })}
+                      </ol>
+                      <p className="mt-6 text-center text-xs text-fg-subtle">
+                        You&apos;ll be taken to your report automatically when it&apos;s ready.
+                      </p>
+                    </div>
                   )}
-                </button>
-              </div>
-            </div>
-          )}
 
-          {/* STEP 4: Live Polling */}
-          {step === 4 && (
-            <div className="rounded-2xl border border-indigo-500/30 bg-slate-900/80 p-8 sm:p-12 shadow-2xl backdrop-blur-xl text-center animate-fade-in">
-              <div className="mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-2xl bg-indigo-500/10 text-indigo-400 shadow-inner">
-                {analysisStatus === "completed" ? (
-                  <CheckCircle2 className="h-10 w-10 text-emerald-400" />
-                ) : analysisStatus === "failed" ? (
-                  <AlertCircle className="h-10 w-10 text-rose-400" />
-                ) : (
-                  <Loader2 className="h-10 w-10 animate-spin text-indigo-400" />
-                )}
-              </div>
-
-              <h2 className="text-xl font-bold text-white">
-                {analysisStatus === "completed"
-                  ? "Evaluation Complete! Redirecting..."
-                  : analysisStatus === "failed"
-                  ? "Analysis Failed"
-                  : "Scanning Resume Evidence Matrix..."}
-              </h2>
-              <p className={`mt-2 text-sm font-medium ${currentStepInfo.color}`}>
-                {currentStepInfo.label}
-              </p>
-
-              {/* Progress bar stages */}
-              <div className="mt-8 max-w-md mx-auto space-y-2">
-                <div className="h-2.5 w-full rounded-full bg-slate-950 overflow-hidden border border-slate-800">
-                  <div
-                    className="h-full bg-gradient-to-r from-indigo-500 via-violet-500 to-emerald-400 transition-all duration-700"
-                    style={{ width: `${((currentStepInfo.step + 1) / 8) * 100}%` }}
-                  />
-                </div>
-                <div className="flex justify-between text-xs text-slate-500">
-                  <span>Stage {Math.max(1, currentStepInfo.step)} / 7</span>
-                  <span>{currentStepInfo.step >= 7 ? "100%" : `${Math.round(((currentStepInfo.step + 1) / 8) * 100)}%`}</span>
-                </div>
-              </div>
-
-              {analysisError && (
-                <div className="mt-6 rounded-lg bg-rose-500/10 border border-rose-500/30 p-4 text-xs text-rose-300">
-                  {analysisError}
-                </div>
+                  {analysisError && (
+                    <div className="mx-auto mt-6 max-w-md">
+                      <Alert>{analysisError}</Alert>
+                      <div className="mt-4 flex flex-col justify-center gap-3 sm:flex-row">
+                        <Button
+                          variant="secondary"
+                          onClick={() => {
+                            setAnalysisError(null);
+                            setStep(3);
+                          }}
+                        >
+                          <ArrowLeft aria-hidden="true" />
+                          Back to review
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          onClick={() => {
+                            setAnalysisError(null);
+                            setStep(1);
+                          }}
+                        >
+                          Upload a different resume
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+                </Card>
               )}
-            </div>
-          )}
             </>
           )}
         </div>
-      </main>
+      </Container>
+    </PageShell>
+  );
+}
 
-      <Footer />
+function Stepper({ current }: { current: Step }) {
+  return (
+    <nav aria-label="Evaluation progress" className="mt-8">
+      <ol className="flex items-center">
+        {WIZARD_STEPS.map((item, index) => {
+          const isComplete = current > item.step;
+          const isCurrent = current === item.step;
+          return (
+            <li key={item.step} className={cn("flex items-center", index < WIZARD_STEPS.length - 1 && "flex-1")}>
+              <span className="flex items-center gap-2" aria-current={isCurrent ? "step" : undefined}>
+                <span
+                  className={cn(
+                    "flex size-7 shrink-0 items-center justify-center rounded-full border text-xs font-semibold transition-colors",
+                    isComplete && "border-primary bg-primary text-primary-foreground",
+                    isCurrent && "border-primary bg-primary-soft text-primary-text",
+                    !isComplete && !isCurrent && "border-border-strong bg-surface text-fg-subtle"
+                  )}
+                >
+                  {isComplete ? <Check className="size-3.5" strokeWidth={3} aria-hidden="true" /> : item.step}
+                </span>
+                <span
+                  className={cn(
+                    "text-sm",
+                    isCurrent ? "font-medium text-fg" : "hidden text-fg-muted sm:inline",
+                  )}
+                >
+                  {item.label}
+                  {isComplete && <span className="sr-only"> (completed)</span>}
+                </span>
+              </span>
+              {index < WIZARD_STEPS.length - 1 && (
+                <span
+                  aria-hidden="true"
+                  className={cn("mx-3 h-px flex-1 transition-colors", isComplete ? "bg-primary" : "bg-border")}
+                />
+              )}
+            </li>
+          );
+        })}
+      </ol>
+    </nav>
+  );
+}
+
+function QuotaNote({ isAuthenticated, tier, used }: { isAuthenticated: boolean; tier?: string; used: number }) {
+  if (isAuthenticated && tier === "pro") {
+    return (
+      <p className="mt-4 text-center text-sm text-fg-subtle">
+        <Badge tone="primary">Pro plan</Badge> <span className="ml-1">Unlimited resume checks</span>
+      </p>
+    );
+  }
+  if (isAuthenticated && tier !== "free") return null;
+
+  const remaining = Math.max(0, FREE_DAILY_LIMIT - used);
+  return (
+    <p className="mt-4 text-center text-sm text-fg-subtle">
+      {remaining} of {FREE_DAILY_LIMIT} free checks left today
+      {!isAuthenticated && (
+        <>
+          {" · "}
+          <Link href="/login?redirect=%2Fanalysis%2Fnew" className="font-medium text-primary-text hover:underline">
+            Sign in
+          </Link>{" "}
+          to save reports to your dashboard
+        </>
+      )}
+    </p>
+  );
+}
+
+interface ReviewRowProps {
+  label: string;
+  onEdit?: () => void;
+  editLabel?: string;
+  disabled?: boolean;
+  children: React.ReactNode;
+}
+
+function ReviewRow({ label, onEdit, editLabel, disabled, children }: ReviewRowProps) {
+  return (
+    <div className="flex items-center justify-between gap-4 px-4 py-3">
+      <div className="min-w-0">
+        <dt className="text-fg-muted">{label}</dt>
+        <dd className="mt-0.5 truncate font-medium text-fg">{children}</dd>
+      </div>
+      {onEdit && (
+        <Button variant="ghost" size="sm" onClick={onEdit} disabled={disabled} aria-label={editLabel}>
+          Edit
+        </Button>
+      )}
     </div>
   );
 }

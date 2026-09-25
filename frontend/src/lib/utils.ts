@@ -9,6 +9,11 @@ export function cn(...inputs: ClassValue[]) {
 }
 
 /**
+ * Semantic color tone shared by badges, meters and status indicators.
+ */
+export type Tone = "neutral" | "primary" | "success" | "warning" | "danger" | "info";
+
+/**
  * Format a date string to a human-readable format.
  */
 export function formatDate(dateString: string): string {
@@ -44,22 +49,27 @@ export function formatFileSize(bytes: number): string {
 }
 
 /**
- * Get color classes for evidence level badges.
+ * Round a 0-100 score for display.
  */
-export function getEvidenceLevelColor(level: string): string {
+export function formatScore(score: number | null | undefined): number {
+  return Math.round(score ?? 0);
+}
+
+/**
+ * Get the tone for an evidence level badge.
+ */
+export function getEvidenceLevelTone(level: string): Tone {
   switch (level) {
     case "strong":
-      return "bg-emerald-500/15 text-emerald-400 border-emerald-500/30";
+      return "success";
     case "moderate":
-      return "bg-blue-500/15 text-blue-400 border-blue-500/30";
+      return "info";
     case "weak":
-      return "bg-amber-500/15 text-amber-400 border-amber-500/30";
-    case "mentioned_only":
-      return "bg-slate-500/15 text-slate-400 border-slate-500/30";
+      return "warning";
     case "missing":
-      return "bg-rose-500/15 text-rose-400 border-rose-500/30";
+      return "danger";
     default:
-      return "bg-slate-500/15 text-slate-400 border-slate-500/30";
+      return "neutral";
   }
 }
 
@@ -84,57 +94,36 @@ export function getEvidenceLevelLabel(level: string): string {
 }
 
 /**
- * Get color classes for importance badges.
+ * Get the tone for a job requirement importance badge.
  */
-export function getImportanceColor(importance: string): string {
-  switch (importance) {
-    case "required":
-      return "bg-rose-500/15 text-rose-400 border-rose-500/30";
-    case "preferred":
-      return "bg-amber-500/15 text-amber-400 border-amber-500/30";
-    case "optional":
-      return "bg-slate-500/15 text-slate-400 border-slate-500/30";
-    default:
-      return "bg-slate-500/15 text-slate-400 border-slate-500/30";
-  }
+export function getImportanceTone(importance: string): Tone {
+  return importance === "required" ? "primary" : "neutral";
 }
 
 /**
- * Get color classes for recommendation priority.
+ * Get the tone for a recommendation priority badge.
  */
-export function getPriorityColor(priority: string): string {
+export function getPriorityTone(priority: string): Tone {
   switch (priority) {
     case "critical":
-      return "bg-rose-500/15 text-rose-400 border-rose-500/30";
+      return "danger";
     case "high":
-      return "bg-amber-500/15 text-amber-400 border-amber-500/30";
+      return "warning";
     case "medium":
-      return "bg-blue-500/15 text-blue-400 border-blue-500/30";
-    case "low":
-      return "bg-slate-500/15 text-slate-400 border-slate-500/30";
+      return "info";
     default:
-      return "bg-slate-500/15 text-slate-400 border-slate-500/30";
+      return "neutral";
   }
 }
 
 /**
- * Get color for score value (0-100).
+ * Get the tone for a score value (0-100).
  */
-export function getScoreColor(score: number): string {
-  if (score >= 80) return "text-emerald-400";
-  if (score >= 60) return "text-blue-400";
-  if (score >= 40) return "text-amber-400";
-  return "text-rose-400";
-}
-
-/**
- * Get background gradient for score value.
- */
-export function getScoreGradient(score: number): string {
-  if (score >= 80) return "from-emerald-500 to-emerald-600";
-  if (score >= 60) return "from-blue-500 to-blue-600";
-  if (score >= 40) return "from-amber-500 to-amber-600";
-  return "from-rose-500 to-rose-600";
+export function getScoreTone(score: number): Tone {
+  if (score >= 80) return "success";
+  if (score >= 60) return "info";
+  if (score >= 40) return "warning";
+  return "danger";
 }
 
 /**
@@ -150,25 +139,26 @@ export function getScoreVerdict(score: number): string {
 }
 
 /**
+ * Ordered stages of the analysis pipeline, as reported by the backend status field.
+ */
+export const ANALYSIS_STAGES = [
+  { status: "extracting_resume", label: "Extracting resume content" },
+  { status: "analyzing_requirements", label: "Analyzing job requirements" },
+  { status: "matching_skills", label: "Identifying candidate skills" },
+  { status: "finding_evidence", label: "Finding supporting evidence" },
+  { status: "evaluating_strength", label: "Evaluating evidence strength" },
+  { status: "generating_recommendations", label: "Generating recommendations" },
+] as const;
+
+/**
  * Get analysis status display info.
  */
-export function getStatusInfo(status: string): {
-  label: string;
-  color: string;
-  step: number;
-} {
-  const statuses: Record<string, { label: string; color: string; step: number }> = {
-    pending: { label: "Starting...", color: "text-slate-400", step: 0 },
-    extracting_resume: { label: "Extracting resume content", color: "text-blue-400", step: 1 },
-    analyzing_requirements: { label: "Analyzing job requirements", color: "text-blue-400", step: 2 },
-    matching_skills: { label: "Identifying candidate skills", color: "text-violet-400", step: 3 },
-    finding_evidence: { label: "Finding supporting evidence", color: "text-violet-400", step: 4 },
-    evaluating_strength: { label: "Evaluating evidence strength", color: "text-amber-400", step: 5 },
-    generating_recommendations: { label: "Generating recommendations", color: "text-amber-400", step: 6 },
-    completed: { label: "Analysis complete", color: "text-emerald-400", step: 7 },
-    failed: { label: "Analysis failed", color: "text-rose-400", step: -1 },
-  };
-  return statuses[status] || { label: status, color: "text-slate-400", step: 0 };
+export function getStatusInfo(status: string): { label: string; step: number } {
+  if (status === "pending") return { label: "Starting...", step: 0 };
+  if (status === "completed") return { label: "Analysis complete", step: 7 };
+  if (status === "failed") return { label: "Analysis failed", step: -1 };
+  const index = ANALYSIS_STAGES.findIndex((stage) => stage.status === status);
+  return index >= 0 ? { label: ANALYSIS_STAGES[index].label, step: index + 1 } : { label: status, step: 0 };
 }
 
 /**
@@ -184,4 +174,28 @@ export function truncateText(text: string, maxLength: number): string {
  */
 export function clampPercentage(value: number): number {
   return Math.max(0, Math.min(100, Math.round(value)));
+}
+
+/**
+ * Extract a user-facing message from an API error.
+ * The axios interceptor in lib/api.ts rejects with `{ status, detail }`.
+ */
+export function getErrorMessage(error: unknown, fallback: string): string {
+  if (error && typeof error === "object") {
+    const e = error as { detail?: unknown; message?: unknown; response?: { data?: { detail?: unknown } } };
+    if (typeof e.detail === "string" && e.detail) return e.detail;
+    if (typeof e.response?.data?.detail === "string" && e.response.data.detail) return e.response.data.detail;
+    if (typeof e.message === "string" && e.message) return e.message;
+  }
+  return fallback;
+}
+
+/**
+ * HTTP status of an API error rejected by the axios interceptor, or 0 if unknown.
+ */
+export function getErrorStatus(error: unknown): number {
+  if (error && typeof error === "object" && "status" in error && typeof error.status === "number") {
+    return error.status;
+  }
+  return 0;
 }

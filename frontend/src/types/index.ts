@@ -188,10 +188,77 @@ export interface InterrogationSession {
   analysis_id: string;
   skill_evidence_id: string;
   skill_name: string;
-  status: "active" | "completed" | "cancelled";
+  status: "active" | "completed" | "abandoned";
   generated_bullet: string | null;
   messages: InterrogationMessage[];
   created_at: string;
+}
+
+// ==========================================
+// Analysis Report Types (GET /analyses/{id})
+// ==========================================
+export interface ReportJobRequirement {
+  id: string;
+  skill_name: string;
+  normalized_skill_name: string;
+  importance: SkillImportance;
+  category: SkillCategory;
+  source_text: string | null;
+  context_explanation: string | null;
+}
+
+export interface ReportSkillEvidence {
+  id: string;
+  job_requirement_id: string;
+  resume_skill_id: string | null;
+  evidence_level: EvidenceLevel;
+  score: number;
+  classification_explanation: string;
+  supporting_text: string | null;
+  action_demonstrated: boolean;
+  technical_context: boolean;
+  implementation_depth: boolean;
+  ownership_clarity: boolean;
+  outcome_described: boolean;
+  measurability: boolean;
+}
+
+export interface ReportRecommendation {
+  id: string;
+  skill_evidence_id: string | null;
+  priority: RecommendationPriority;
+  category: string;
+  title: string;
+  description: string;
+  example_text: string | null;
+}
+
+export interface ReportScoringBreakdown {
+  total_required_skills?: number;
+  covered_required_skills?: number;
+  total_preferred_skills?: number;
+  covered_preferred_skills?: number;
+}
+
+export interface AnalysisReport {
+  id: string;
+  user_id: string | null;
+  job_title: string | null;
+  status: AnalysisStatus;
+  overall_score: number | null;
+  required_coverage_score: number | null;
+  evidence_strength_score: number | null;
+  preferred_coverage_score: number | null;
+  experience_relevance_score: number | null;
+  communication_score: number | null;
+  unsupported_claims_score?: number | null;
+  error_message: string | null;
+  created_at: string;
+  completed_at: string | null;
+  scoring_breakdown: ReportScoringBreakdown | null;
+  job_requirements: ReportJobRequirement[];
+  skill_evidences: ReportSkillEvidence[];
+  recommendations: ReportRecommendation[];
 }
 
 // ==========================================
